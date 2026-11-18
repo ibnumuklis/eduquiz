@@ -1,6 +1,7 @@
 "use client";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
-import { Settings2, Square, Volume2 } from "lucide-react";
+import { createPortal } from "react-dom";
+import { Settings2, Square, Volume2, X } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { planSpeech, type SpeechMode } from "@/lib/tts/plan";
 
@@ -124,17 +125,43 @@ export function ReadAloudButton({ text, prominent = false, autoKey, lang = "id-I
   const [open, setOpen] = useState(false);
   const [sample, setSample] = useState(SAMPLE);
   const [showDict, setShowDict] = useState(false);
-  const menuRef = useRef<HTMLDivElement>(null);
+  const btnRef = useRef<HTMLButtonElement>(null);
+  /** null = closed; "sheet" = phone bottom sheet; otherwise a fixed, on-screen popover position. */
+  const [layout, setLayout] = useState<null | { sheet: true } | { sheet: false; top: number; left: number; maxH: number }>(null);
+  const openSettings = () => {
+    if (open) { setOpen(false); return; }
+    const vw = window.innerWidth, vh = window.innerHeight;
+    if (vw < 640) setLayout({ sheet: true });
+    else {
+      const r = btnRef.current?.getBoundingClientRect();
+      const width = 320, gap = 8;
+      const left = Math.min(Math.max(gap, (r?.right ?? vw) - width), vw - width - gap);
+      const below = (r?.bottom ?? 0) + gap;
+      const spaceBelow = vh - below - gap;
+      const top = spaceBelow >= 320 ? below : Math.max(gap, (r?.top ?? vh) - gap - Math.min(560, vh - 2 * gap));
+      setLayout({ sheet: false, top, left, maxH: spaceBelow >= 320 ? spaceBelow : Math.min(560, vh - 2 * gap) });
+    }
+    setOpen(true);
+  };
   useEffect(() => {
     if (prominent && autoKey && supported && voices.length) speak(text);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [prominent, autoKey, supported, voices.length]);
   useEffect(() => {
     if (!open) return;
-    const close = (e: MouseEvent) => menuRef.current && !menuRef.current.contains(e.target as Node) && setOpen(false);
-    document.addEventListener("mousedown", close);
-    return () => document.removeEventListener("mousedown", close);
-  }, [open]);
+    const onKey = (e: KeyboardEvent) => { if (e.key === "Escape") setOpen(false); };
+    const onResize = () => setOpen(false);
+    document.addEventListener("keydown", onKey);
+    window.addEventListener("resize", onResize);
+    // Phone bottom sheet: keep the page behind it from scrolling.
+    const prev = document.body.style.overflow;
+    if (layout?.sheet) document.body.style.overflow = "hidden";
+    return () => {
+      document.removeEventListener("keydown", onKey);
+      window.removeEventListener("resize", onResize);
+      document.body.style.overflow = prev;
+    };
+  }, [open, layout]);
   const langs = useMemo(() => {
     const tags = [lang];
     if (!lang.startsWith("en")) tags.push("en-US");
@@ -143,23 +170,38 @@ export function ReadAloudButton({ text, prominent = false, autoKey, lang = "id-I
   }, [lang]);
   if (!supported) return null;
   return (
-    <div className="relative inline-flex items-center" ref={menuRef}>
+    <div className="relative inline-flex items-center">
       <button type="button" onClick={() => (speaking ? stop() : speak(text))} aria-pressed={speaking} title="Bacakan soal dengan suara"
         className={cn("inline-flex items-center gap-1.5 rounded-l-full py-1.5 pl-3 pr-2 text-xs font-semibold transition",
           prominent ? "bg-violet-600 text-white hover:bg-violet-700" : "bg-slate-100 text-slate-600 hover:bg-slate-200")}>
         {speaking ? <Square className="h-3.5 w-3.5" /> : <Volume2 className="h-3.5 w-3.5" />} {speaking ? "Berhenti" : "Bacakan"}
       </button>
-      <button type="button" onClick={() => setOpen((o) => !o)} aria-expanded={open} aria-label="Pengaturan suara" title="Pilih suara & kecepatan"
+      <button ref={btnRef} type="button" onClick={openSettings} aria-expanded={open} aria-haspopup="dialog" aria-label="Pengaturan suara" title="Pilih suara & kecepatan"
         className={cn("rounded-r-full py-1.5 pl-1.5 pr-2.5 transition", prominent ? "bg-violet-700 text-white" : "bg-slate-200 text-slate-600 hover:bg-slate-300")}>
         <Settings2 className="h-3.5 w-3.5" />
       </button>
-      {open && (
-        <div className="absolute right-0 top-full z-30 mt-2 max-h-[70vh] w-80 overflow-y-auto rounded-2xl border border-slate-200 bg-white p-4 text-left shadow-xl">
+      {open && layout && typeof document !== "undefined" && createPortal(
+        <>
+          <div className={cn("fixed inset-0 z-[90]", layout.sheet ? "animate-fade-in bg-slate-900/40 backdrop-blur-[1px]" : "")}
+            onClick={() => setOpen(false)} aria-hidden="true" />
+          <div role="dialog" aria-modal="true" aria-label="Pengaturan suara"
+            style={layout.sheet ? undefined : { top: layout.top, left: layout.left, maxHeight: layout.maxH }}
+            className={cn("fixed z-[91] overflow-y-auto overscroll-contain bg-white text-left text-slate-700 shadow-2xl",
+              layout.sheet
+                ? "inset-x-0 bottom-0 max-h-[85dvh] animate-fade-in rounded-t-3xl px-5 pt-2 pb-[max(1.25rem,env(safe-area-inset-bottom))]"
+                : "w-80 animate-fade-in rounded-2xl border border-slate-200 p-4")}>
+          {layout.sheet && <div className="mx-auto mb-2 h-1.5 w-10 rounded-full bg-slate-200" aria-hidden="true" />}
+          <div className="mb-3 flex items-center justify-between">
+            <p className="text-sm font-bold text-slate-900">Pengaturan suara</p>
+            <button type="button" onClick={() => setOpen(false)} className="rounded-lg p-1.5 text-slate-400 hover:bg-slate-100 hover:text-slate-600" aria-label="Tutup">
+              <X className="h-4 w-4" />
+            </button>
+          </div>
           <p className="text-xs font-bold uppercase tracking-wide text-slate-500">Bahasa pembacaan</p>
           <div className="mt-2 grid grid-cols-3 gap-1 rounded-xl bg-slate-100 p-1">
             {MODES.map((m) => (
               <button key={m.value} type="button" title={m.hint} onClick={() => update({ ...pref, mode: m.value })}
-                className={cn("rounded-lg py-1.5 text-xs font-semibold transition", pref.mode === m.value ? "bg-white text-brand-700 shadow-sm" : "text-slate-500 hover:text-slate-700")}>
+                className={cn("rounded-lg py-2 text-xs font-semibold transition sm:py-1.5", pref.mode === m.value ? "bg-white text-brand-700 shadow-sm" : "text-slate-500 hover:text-slate-700")}>
                 {m.label}
               </button>
             ))}
@@ -175,7 +217,7 @@ export function ReadAloudButton({ text, prominent = false, autoKey, lang = "id-I
           <div className="mt-2 flex gap-1">
             {RATES.map((r) => (
               <button key={r} type="button" onClick={() => update({ ...pref, rate: r })}
-                className={cn("flex-1 rounded-lg py-1.5 text-xs font-semibold", pref.rate === r ? "bg-brand-600 text-white" : "bg-slate-100 text-slate-600")}>{r}×</button>
+                className={cn("flex-1 rounded-lg py-2 text-xs font-semibold sm:py-1.5", pref.rate === r ? "bg-brand-600 text-white" : "bg-slate-100 text-slate-600")}>{r}×</button>
             ))}
           </div>
           {langs.map((tag) => {
@@ -185,7 +227,7 @@ export function ReadAloudButton({ text, prominent = false, autoKey, lang = "id-I
               <div key={tag} className="mt-3">
                 <p className="text-xs font-bold uppercase tracking-wide text-slate-500">Suara {base === "en" ? "bahasa Inggris" : base === "id" ? "bahasa Indonesia" : tag}</p>
                 {list.length ? (
-                  <select className="mt-1 w-full rounded-lg border border-slate-200 px-2 py-1.5 text-xs" value={pick(tag)?.voiceURI ?? ""}
+                  <select className="mt-1 w-full rounded-lg border border-slate-200 bg-white px-2 py-2 text-base sm:py-1.5 sm:text-xs" value={pick(tag)?.voiceURI ?? ""}
                     onChange={(e) => update({ ...pref, voices: { ...pref.voices, [base]: e.target.value } })}>
                     {list.map((v) => <option key={v.voiceURI} value={v.voiceURI}>{v.name}{/natural|neural|online|google|premium|enhanced/i.test(v.name) ? " ★" : ""}</option>)}
                   </select>
@@ -200,18 +242,20 @@ export function ReadAloudButton({ text, prominent = false, autoKey, lang = "id-I
             <div className="mt-1">
               <textarea rows={4} value={pref.dict} onChange={(e) => update({ ...pref, dict: e.target.value })} spellCheck={false}
                 placeholder={"Satu kata per baris, contoh:\nTompo\nDaeng = deng\nGowa = go-wa"}
-                className="w-full rounded-lg border border-slate-200 px-2 py-1.5 font-mono text-xs" />
+                className="w-full rounded-lg border border-slate-200 px-2 py-1.5 font-mono text-base sm:text-xs" />
               <p className="text-[11px] italic leading-snug text-slate-400">Kata saja → dibaca suara Indonesia. “kata = bacaan” → diganti cara bacanya.</p>
             </div>
           )}
           <p className="mt-4 text-xs font-bold uppercase tracking-wide text-slate-500">Coba kalimat</p>
-          <textarea rows={2} value={sample} onChange={(e) => setSample(e.target.value)} className="mt-1 w-full rounded-lg border border-slate-200 px-2 py-1.5 text-xs" />
+          <textarea rows={2} value={sample} onChange={(e) => setSample(e.target.value)} className="mt-1 w-full rounded-lg border border-slate-200 px-2 py-1.5 text-base sm:text-xs" />
           <div className="mt-1 flex items-center justify-between">
             <button type="button" onClick={() => speak(sample)} className="inline-flex items-center gap-1 text-xs font-semibold text-brand-700 hover:underline"><Volume2 className="h-3.5 w-3.5" /> Coba suara</button>
             <button type="button" onClick={() => { update(DEFAULT_PREF); setSample(SAMPLE); }} className="text-[11px] text-slate-400 hover:text-slate-600">Atur ulang</button>
           </div>
           <p className="mt-3 text-[11px] italic leading-snug text-slate-400">★ = suara alami. Suara terbaik gratis di Microsoft Edge (“Natural”), Chrome (“Google”), dan iPhone (Siri). Pengaturan disimpan di perangkat ini.</p>
-        </div>
+          </div>
+        </>,
+        document.body,
       )}
     </div>
   );
