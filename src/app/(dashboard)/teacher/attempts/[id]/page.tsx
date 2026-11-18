@@ -28,7 +28,8 @@ export default async function TeacherAttemptPage({ params }: { params: Promise<{
         title={student?.full_name ?? "Siswa"}
         description={`${review.quiz.title} · percobaan ke-${review.attempt.attempt_number} · dikumpulkan ${formatDateTime(review.attempt.submitted_at, session.timezone)}${review.attempt.auto_submitted ? " (otomatis)" : ""}`}
       />
-      <ResultSummary result={review.result} passingGrade={review.quiz.passing_grade} />
+      <ResultSummary result={review.result} passingGrade={review.quiz.passing_grade} mode={review.quiz.mode} masteryTarget={review.quiz.mastery_target} />
+      {(review.attempt.integrity_count ?? 0) > 0 && <p className="mt-3 text-sm text-amber-700">Tercatat {review.attempt.integrity_count} kejadian integritas (pindah tab / keluar layar penuh / salin-tempel) selama pengerjaan.</p>}
       <h2 className="mb-3 mt-8 text-lg font-bold text-slate-900">Jawaban siswa</h2>
       <ReviewList items={review.items} showKeys attemptId={id} canGrade />
     </>

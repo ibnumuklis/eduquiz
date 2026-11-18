@@ -20,7 +20,7 @@ export default async function BankPage({ searchParams }: { searchParams: Promise
 
   let query = supabase
     .from("quiz_questions")
-    .select("id, type, prompt, points, created_at, question_options(label, is_correct, position), accepted_answers, quiz:quizzes!inner(id, title, teacher_id, subject_id, subject:subjects(name))", { count: "exact" })
+    .select("id, type, prompt, points, created_at, question_options(label, is_correct, match_text, position), accepted_answers, quiz:quizzes!inner(id, title, teacher_id, subject_id, subject:subjects(name))", { count: "exact" })
     .eq("school_id", session.schoolId)
     .eq("quiz.teacher_id", session.userId)
     .order("created_at", { ascending: false })

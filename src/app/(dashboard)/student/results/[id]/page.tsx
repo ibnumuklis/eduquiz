@@ -1,7 +1,8 @@
 import type { Metadata } from "next";
 import Link from "next/link";
 import { notFound } from "next/navigation";
-import { ArrowLeft, EyeOff } from "lucide-react";
+import { ArrowLeft, EyeOff, RefreshCcw } from "lucide-react";
+import { StartQuizButton } from "@/app/(dashboard)/student/quizzes/[id]/start-button";
 import { requireSchoolRole } from "@/lib/permissions/session";
 import { getAttemptReview } from "@/features/attempts/queries";
 import { PageHeader, EmptyState, Alert } from "@/components/ui/feedback";
@@ -32,10 +33,20 @@ export default async function StudentResultPage({ params }: { params: Promise<{ 
       <PageHeader
         back={back}
         title={review.quiz.title}
-        description={`Percobaan ke-${review.attempt.attempt_number} · dikumpulkan ${formatDateTime(review.attempt.submitted_at, session.timezone)}${review.attempt.auto_submitted ? " (otomatis saat waktu habis)" : ""}`}
+        description={`Percobaan ke-${review.attempt.attempt_number} · dikumpulkan ${formatDateTime(review.attempt.submitted_at, session.timezone)}${review.attempt.auto_submitted ? " (otomatis saat waktu habis)" : ""}${review.attempt.is_remedial ? " · latihan ulang" : ""}`}
         actions={<Link href="/student/quizzes" className={buttonClass("outline")}>Kuis lainnya</Link>}
       />
-      <ResultSummary result={review.result} passingGrade={review.quiz.passing_grade} />
+      <ResultSummary result={review.result} passingGrade={review.quiz.passing_grade} mode={review.quiz.mode} masteryTarget={review.quiz.mastery_target} />
+      {review.can_practice_again && (
+        <div className="mt-6 flex flex-wrap items-center gap-4 rounded-2xl border border-emerald-200 bg-emerald-50 p-4">
+          <RefreshCcw className="h-6 w-6 text-emerald-600" />
+          <div className="min-w-0 flex-1">
+            <p className="font-semibold text-emerald-900">Latihan lagi — hanya soal yang belum kamu kuasai</p>
+            <p className="text-sm text-emerald-700">Ulangi sampai mencapai target penguasaan. Nilai penguasaanmu dihitung dari semua latihan.</p>
+          </div>
+          <div className="w-full sm:w-56"><StartQuizButton quizId={review.quiz.id} label="Latihan lagi" /></div>
+        </div>
+      )}
       {review.result.pending_manual > 0 && <Alert tone="warning" className="mt-6">Ada {review.result.pending_manual} jawaban yang sedang dikoreksi guru. Nilai akhir bisa berubah — kamu akan mendapat notifikasi.</Alert>}
       {review.items && review.items.length > 0 && (
         <>

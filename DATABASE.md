@@ -44,10 +44,37 @@ Constraint penting:
 | Pilihan ganda / Benar-salah | Tepat satu opsi benar dipilih → bobot penuh, selain itu 0 |
 | Pilihan ganda kompleks | `bobot × max(0, (benar_dipilih − salah_dipilih) / total_benar)` — dibulatkan 2 desimal. Memilih semua opsi tidak menguntungkan. |
 | Jawaban singkat / isian | Dicocokkan dengan kunci setelah normalisasi (trim, spasi ganda → satu, case-insensitive kecuali diaktifkan). Tidak cocok → 0, atau **menunggu koreksi manual** jika opsi koreksi manual aktif / tidak ada kunci. |
+| PGK Benar/Salah (`tf_grid`) | Setiap opsi = pernyataan; `is_correct` = kunci Benar. Nilai `bobot × pernyataan_tepat / jumlah_pernyataan`. Jawaban di `student_answers.answer_data` (`{option_id: boolean}`). |
+| Menjodohkan (`matching`) | Opsi = sisi kiri, `match_text` = pasangan. Nilai `bobot × pasangan_tepat / jumlah_pasangan` (perbandingan tanpa beda huruf besar/kecil). Siswa hanya melihat daftar pasangan teracak, bukan pemetaannya. |
+| Mengurutkan (`ordering`) | `position` opsi = urutan benar; opsi selalu diacak saat disajikan. Nilai `bobot × item_di_posisi_benar / jumlah_item`. |
+| Uraian (`essay`) | Selalu koreksi manual. Rubrik (`quiz_questions.payload.rubric`) memandu guru; skor per kriteria disimpan di `rubric_scores`, umpan balik di `teacher_feedback`. |
+| Polling / word cloud | Tidak dinilai: tidak masuk total poin maupun hitungan benar/salah. |
 
 Nilai = `poin diperoleh / total poin × 100`. Lulus jika ≥ passing grade. Jawaban yang menunggu koreksi dihitung 0 sementara; setelah guru menilai (`grade_answer`) hasil dihitung ulang, XP diberikan, dan siswa diberi notifikasi.
 
 Seluruh perhitungan berjalan di database. `_finalize_attempt` mengunci baris pengerjaan (`FOR UPDATE`) sehingga submit ganda/bersamaan menghasilkan tepat satu hasil.
+
+### Mode kuis & skor
+
+- **Standar** — perilaku biasa.
+- **Latihan (`practice`)** — tanpa batas percobaan (maks. 50). Setelah percobaan pertama, `start_attempt` hanya menyajikan soal yang belum dikuasai (`is_remedial`). Nilai = **penguasaan kumulatif**: poin terbaik per soal dari seluruh percobaan ÷ total poin. `mastered` = nilai ≥ `mastery_target`. Nilai & pembahasan selalu ditampilkan.
+- **Ujian (`exam`)** — power-up & umpan balik langsung dimatikan (trigger `tg_quiz_mode`), tidak ada XP/pencapaian, `game_score = 0`.
+- `quiz_results.game_score` = akurasi × 1000 + bonus kecepatan (maks. 500). Hanya untuk gamifikasi; **nilai rapor tetap `score`**.
+
+### Integritas, akomodasi, power-up
+
+- `log_integrity_event` mencatat `tab_hidden`, `window_blur`, `fullscreen_exit`, `copy`, `paste`, `context_menu` ke `integrity_events` dan menaikkan `quiz_attempts.integrity_count` (tampil realtime di Monitoring; notifikasi guru pada kejadian ke-3). Tidak ada sanksi otomatis.
+- `student_accommodations` (per siswa per sekolah): `time_multiplier` (1–3) diterapkan ke `expires_at`, `reduce_options` menyisakan ±½ opsi pilihan ganda (kunci selalu ada), `read_aloud` mengaktifkan pembacaan otomatis.
+- `use_powerup` — `fifty_fifty` (menyembunyikan ≤2 opsi salah, disimpan di `hidden_options`), `hint` (`payload.hint`), `second_chance` (membuka kunci jawaban yang salah). Masing-masing sekali per pengerjaan.
+- `check_answer` (bila `instant_feedback`) menilai satu jawaban lalu menguncinya (`student_answers.locked`). Kunci jawaban tidak ditampilkan selama siswa masih punya Kesempatan Kedua.
+
+### Analisis
+
+`get_quiz_analysis(quiz)` (hanya pengelola kuis) mengembalikan heatmap siswa × soal (rasio 0–1; −1 kosong; −2 menunggu koreksi), p-value per soal, jumlah pemilih per opsi (analisis pengecoh), kata terbanyak (word cloud/isian), dan TP terkait. Daya beda (kelompok atas–bawah 27%), ketuntasan per TP, dan draf deskripsi rapor dihitung di `src/lib/utils/analysis.ts`.
+
+### Impor soal
+
+`import_questions(quiz, rows)` memanggil `save_question` per baris di dalam sub-transaksi — baris gagal tidak membatalkan baris lain dan dilaporkan dengan nomor baris. File Excel/CSV diurai di `src/lib/import/questions.ts` (template: `/api/templates/questions`).
 
 ## Sesi kuis
 
@@ -62,7 +89,7 @@ Seluruh perhitungan berjalan di database. `_finalize_attempt` mengunci baris pen
 - XP per kuis (sekali per siswa per kuis, retake tidak menambah): `10 + round(nilai/10) + 20 jika lulus`.
 - Level: `floor(sqrt(xp/50)) + 1`.
 - Streak harian berdasarkan zona waktu sekolah.
-- Achievement: first_quiz, first_pass, perfect_score, five_quizzes, twenty_quizzes, streak_3, streak_7, speedster, level_5.
+- Achievement: first_quiz, first_pass, perfect_score, five_quizzes, twenty_quizzes, streak_3, streak_7, speedster, level_5, practice_master.
 - Leaderboard memakai XP per sekolah (`xp_ledger.school_id`) dan menghormati `leaderboard_enabled` / `leaderboard_show_names`.
 
 ## Status migrasi

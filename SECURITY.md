@@ -53,7 +53,7 @@ HSTS, `X-Frame-Options: DENY`, `nosniff`, `Referrer-Policy`, `Permissions-Policy
 
 ## Pengujian keamanan (otomatis)
 
-`tests/integration/security-and-grading.test.ts` — 47 tes, dijalankan pada setiap CI:
+`tests/integration/security-and-grading.test.ts` — 48 tes, dijalankan pada setiap CI:
 - akses anonim ke tabel & RPC ditolak
 - eskalasi hak: jadi super admin, ubah XP, ubah peran sendiri, ubah status sekolah
 - isolasi lintas sekolah (baca kuis/kelas/anggota/profil, buat kuis, tugaskan kelas, masuk dengan kode)
@@ -63,7 +63,16 @@ HSTS, `X-Frame-Options: DENY`, `nosniff`, `Referrer-Policy`, `Permissions-Policy
 - undangan: email lain, email belum terverifikasi, pemakaian ulang, guru membuat undangan
 - privasi leaderboard, perlindungan admin terakhir
 
+`tests/integration/learning-features.test.ts` — 19 tes: payload siswa tanpa kunci untuk tipe AKM (termasuk pemetaan menjodohkan), validasi jawaban terstruktur, penilaian parsial, remedial & penguasaan, mode ujian tanpa XP/power-up, power-up sekali pakai & tidak pernah menyembunyikan kunci, kunci tidak bocor selama Kesempatan Kedua tersedia, kejadian integritas hanya dapat ditulis lewat RPC oleh pemilik attempt dan hanya dibaca guru pengelola, akomodasi hanya oleh staf sekolah yang sama, TP lintas sekolah ditolak, folder milik guru lain ditolak, impor per baris.
+
 E2E smoke (`tests/e2e/smoke.spec.ts`) memverifikasi semua area peran & API laporan tertutup tanpa sesi, serta header keamanan.
+
+## Privasi fitur baru
+
+- `integrity_events` tidak memiliki grant INSERT/UPDATE untuk klien; satu-satunya jalur tulis adalah `log_integrity_event` yang memeriksa kepemilikan attempt. Data ini adalah sinyal untuk percakapan guru–siswa, bukan bukti tunggal.
+- `student_accommodations` hanya terlihat oleh siswa bersangkutan dan staf sekolahnya.
+- Service worker (`public/sw.js`) hanya meng-cache aset statis & halaman offline — halaman, API, dan lalu lintas Supabase tidak pernah di-cache.
+- Bacakan soal memakai Web Speech API bawaan browser; teks tidak dikirim ke server EDUQUIZ.
 
 ## Melaporkan celah
 

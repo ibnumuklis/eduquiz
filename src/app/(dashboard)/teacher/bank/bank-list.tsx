@@ -8,6 +8,7 @@ import { Button } from "@/components/ui/button";
 import { Select } from "@/components/ui/form";
 import { QUESTION_TYPE_LABEL } from "@/lib/validations/quiz";
 import { formatScore } from "@/lib/utils";
+import { keySummary } from "@/lib/utils/quiz";
 import type { QuestionType } from "@/types";
 
 export interface BankQuestion {
@@ -16,7 +17,7 @@ export interface BankQuestion {
   prompt: string;
   points: number;
   accepted_answers: string[];
-  question_options: { label: string; is_correct: boolean; position: number }[];
+  question_options: { label: string; is_correct: boolean; match_text?: string | null; position: number }[];
   quiz: { id: string; title: string; subject: { name: string } | null };
 }
 
@@ -55,9 +56,7 @@ export function BankList({ questions, quizzes }: { questions: BankQuestion[]; qu
                 </div>
                 <p className="mt-1.5 line-clamp-2 text-sm font-medium text-slate-800">{q.prompt}</p>
                 <p className="mt-1 truncate text-xs text-emerald-700">
-                  Kunci: {q.question_options.length
-                    ? q.question_options.filter((o) => o.is_correct).map((o) => o.label).join(", ")
-                    : q.accepted_answers.join(" / ") || "manual"}
+                  Kunci: {keySummary(q.type, q.question_options, q.accepted_answers)}
                 </p>
               </div>
             </label>

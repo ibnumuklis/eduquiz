@@ -2,7 +2,15 @@ export type MemberRole = "school_admin" | "teacher" | "student";
 export type AppRole = MemberRole | "super_admin";
 export type QuizStatus = "draft" | "published" | "closed";
 export type QuizAccess = "assigned" | "code" | "both";
-export type QuestionType = "multiple_choice" | "multiple_select" | "true_false" | "short_answer" | "fill_blank";
+export type QuestionType =
+  | "multiple_choice" | "multiple_select" | "true_false" | "short_answer" | "fill_blank"
+  | "tf_grid" | "matching" | "ordering" | "essay" | "poll" | "word_cloud";
+export type QuizMode = "standard" | "practice" | "exam";
+export type QuizTheme = "default" | "batik" | "nusantara" | "angkasa" | "laut" | "hutan";
+export type PowerupKind = "fifty_fifty" | "hint" | "second_chance";
+export type IntegrityKind = "tab_hidden" | "window_blur" | "fullscreen_exit" | "copy" | "paste" | "context_menu";
+export interface RubricItem { criterion: string; points: number }
+export interface QuestionPayload { hint?: string; rubric?: RubricItem[] }
 export type AttemptStatus = "in_progress" | "submitted";
 export type MonitorStatus = "not_started" | "in_progress" | "completed" | "late" | "missed";
 
@@ -69,6 +77,15 @@ export interface Quiz {
   closed_at: string | null;
   created_at: string;
   updated_at: string;
+  folder_id: string | null;
+  mode: QuizMode;
+  mastery_target: number;
+  require_fullscreen: boolean;
+  detect_tab_switch: boolean;
+  show_watermark: boolean;
+  powerups_enabled: boolean;
+  instant_feedback: boolean;
+  theme: QuizTheme;
 }
 
 export interface QuestionOption {
@@ -76,6 +93,7 @@ export interface QuestionOption {
   question_id: string;
   label: string;
   is_correct: boolean;
+  match_text: string | null;
   position: number;
 }
 
@@ -91,8 +109,14 @@ export interface Question {
   case_sensitive: boolean;
   manual_grading: boolean;
   position: number;
+  payload: QuestionPayload;
+  stimulus_id: string | null;
+  objective_id: string | null;
   question_options: QuestionOption[];
 }
+
+export interface Stimulus { id: string; title: string | null; content: string; image_path: string | null; image_url?: string | null }
+export interface LearningObjective { id: string; code: string; description: string; subject_id: string | null; phase: string | null; grade_level: string | null; created_by: string | null }
 
 export interface AttemptQuestion {
   id: string;
@@ -102,6 +126,19 @@ export interface AttemptQuestion {
   image_url?: string | null;
   points: number;
   options: { id: string; label: string }[];
+  stimulus?: (Omit<Stimulus, "id"> & { id?: string }) | null;
+  rubric?: RubricItem[] | null;
+  has_hint?: boolean;
+  hint?: string | null;
+  right_choices?: string[] | null;
+}
+
+export interface AttemptAnswer {
+  selected_option_ids: string[];
+  text_answer: string | null;
+  answer_data?: Record<string, boolean | string> | null;
+  locked?: boolean;
+  is_correct?: boolean | null;
 }
 
 export interface AttemptPayload {
@@ -114,11 +151,20 @@ export interface AttemptPayload {
     attempt_number: number;
     answered_count: number;
     total_questions: number;
+    is_remedial?: boolean;
+    time_multiplier?: number;
+    powerups_used?: PowerupKind[];
+    integrity_count?: number;
   };
-  quiz: { id: string; title: string; description: string | null; duration_minutes: number; show_result: boolean };
+  quiz: {
+    id: string; title: string; description: string | null; duration_minutes: number; show_result: boolean;
+    mode?: QuizMode; require_fullscreen?: boolean; detect_tab_switch?: boolean; show_watermark?: boolean;
+    powerups_enabled?: boolean; instant_feedback?: boolean; theme?: QuizTheme;
+  };
+  student?: { full_name: string | null; student_number: string | null; read_aloud: boolean };
   server_now: string;
   questions: AttemptQuestion[];
-  answers: Record<string, { selected_option_ids: string[]; text_answer: string | null }>;
+  answers: Record<string, AttemptAnswer>;
 }
 
 export interface ReviewItem {
@@ -130,14 +176,20 @@ export interface ReviewItem {
   points: number;
   explanation: string | null;
   accepted_answers: string[] | null;
-  options: { id: string; label: string; is_correct: boolean | null }[];
+  rubric?: RubricItem[] | null;
+  stimulus?: { title: string | null; content: string; image_path: string | null } | null;
+  objective?: { code: string; description: string } | null;
+  options: { id: string; label: string; is_correct: boolean | null; match_text?: string | null }[];
   answer: {
     selected_option_ids: string[];
     text_answer: string | null;
+    answer_data?: Record<string, boolean | string> | null;
     is_correct: boolean | null;
     points_awarded: number | null;
     needs_manual_grading: boolean;
     answer_id: string | null;
+    teacher_feedback?: string | null;
+    rubric_scores?: number[] | null;
   };
 }
 
@@ -156,6 +208,8 @@ export interface QuizResult {
   passed: boolean;
   duration_seconds: number;
   xp_awarded: number;
+  game_score: number;
+  mastered: boolean;
   graded_at: string;
   created_at: string;
 }
@@ -163,8 +217,12 @@ export interface QuizResult {
 export interface ReviewPayload {
   visible: boolean;
   show_keys?: boolean;
-  quiz: { id: string; title: string; passing_grade?: number };
-  attempt: { id: string; started_at?: string; submitted_at: string | null; attempt_number?: number; auto_submitted?: boolean; is_late?: boolean };
+  quiz: { id: string; title: string; passing_grade?: number; mode?: QuizMode; mastery_target?: number };
+  attempt: {
+    id: string; started_at?: string; submitted_at: string | null; attempt_number?: number; auto_submitted?: boolean; is_late?: boolean;
+    is_remedial?: boolean; integrity_count?: number; powerups_used?: PowerupKind[];
+  };
+  can_practice_again?: boolean;
   result?: QuizResult;
   items?: ReviewItem[];
 }
@@ -186,6 +244,8 @@ export interface MonitorRow {
   score: number | null;
   passed: boolean | null;
   pending_manual: number | null;
+  integrity_count: number;
+  time_multiplier: number;
 }
 
 export type ActionResult<T = undefined> =

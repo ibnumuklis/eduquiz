@@ -25,8 +25,12 @@ export default async function StudentQuizDetail({ params }: { params: Promise<{ 
   const meta = STATE_META[quiz.state];
   const facts = [
     { icon: Clock, label: "Durasi", value: `${quiz.duration_minutes} menit` },
-    { icon: Repeat, label: "Batas percobaan", value: `${quiz.attemptsUsed}/${quiz.max_attempts} dipakai` },
-    { icon: Target, label: "Passing grade", value: formatScore(quiz.passing_grade) },
+    quiz.mode === "practice"
+      ? { icon: Repeat, label: "Mode latihan", value: `Ulangi sampai tuntas (${quiz.attemptsUsed}× latihan)` }
+      : { icon: Repeat, label: "Batas percobaan", value: `${quiz.attemptsUsed}/${quiz.max_attempts} dipakai` },
+    quiz.mode === "practice"
+      ? { icon: Target, label: "Target penguasaan", value: formatScore(quiz.mastery_target) }
+      : { icon: Target, label: "Passing grade", value: formatScore(quiz.passing_grade) },
     { icon: CalendarClock, label: "Dibuka", value: quiz.start_at ? formatDateTime(quiz.start_at, session.timezone) : "Sekarang" },
     { icon: CalendarClock, label: "Ditutup", value: quiz.end_at ? formatDateTime(quiz.end_at, session.timezone) : "Tidak dibatasi" },
     { icon: ListChecks, label: "Hasil", value: quiz.show_result ? "Ditampilkan setelah selesai" : "Dirahasiakan guru" },
@@ -53,8 +57,24 @@ export default async function StudentQuizDetail({ params }: { params: Promise<{ 
           <Alert tone="info" title="Sebelum mulai">
             Timer berjalan sejak kamu menekan Mulai dan tetap berjalan walau halaman ditutup. Jawaban tersimpan otomatis; jika waktu habis, jawaban dikumpulkan otomatis.
           </Alert>
+          {(quiz.mode === "exam" || quiz.require_fullscreen || quiz.detect_tab_switch || quiz.show_watermark) && (
+            <Alert tone="warning" title={quiz.mode === "exam" ? "Mode ujian" : "Aturan pengerjaan"}>
+              <ul className="list-inside list-disc space-y-0.5">
+                {quiz.require_fullscreen && <li>Kuis dikerjakan dalam layar penuh.</li>}
+                {quiz.detect_tab_switch && <li>Berpindah tab atau aplikasi akan tercatat untuk guru.</li>}
+                {quiz.mode === "exam" && <li>Salin, tempel, dan klik kanan dinonaktifkan. Tidak ada power-up.</li>}
+                {quiz.show_watermark && <li>Nama kamu tampil samar di layar sebagai tanda air.</li>}
+              </ul>
+            </Alert>
+          )}
+          {quiz.mode !== "exam" && (quiz.powerups_enabled || quiz.instant_feedback) && (
+            <Alert tone="success" title="Fitur seru di kuis ini">
+              {quiz.instant_feedback && "Periksa jawaban langsung setelah menjawab. "}
+              {quiz.powerups_enabled && "Power-up: 50:50, Petunjuk, dan Kesempatan Kedua — masing-masing sekali pakai."}
+            </Alert>
+          )}
           {quiz.state === "in_progress" && quiz.openAttemptId && <Link href={`/attempt/${quiz.openAttemptId}`} className={buttonClass("primary", "lg", "w-full")}>Lanjutkan pengerjaan</Link>}
-          {quiz.state === "available" && <StartQuizButton quizId={quiz.id} label={quiz.attemptsUsed ? `Mulai percobaan ke-${quiz.attemptsUsed + 1}` : "Mulai kuis"} />}
+          {quiz.state === "available" && <StartQuizButton quizId={quiz.id} label={quiz.attemptsUsed ? (quiz.mode === "practice" ? "Latihan lagi (soal yang belum dikuasai)" : `Mulai percobaan ke-${quiz.attemptsUsed + 1}`) : "Mulai kuis"} />}
           {quiz.state === "scheduled" && <Alert tone="warning">Kuis dibuka pada {formatDateTime(quiz.start_at, session.timezone)}.</Alert>}
           {quiz.state === "ended" && <Alert tone="error">Waktu pengerjaan kuis sudah berakhir.</Alert>}
           {(attempts ?? []).filter((a) => a.status === "submitted").length > 0 && (

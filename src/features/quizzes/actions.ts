@@ -2,7 +2,7 @@
 import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
 import { actionErrorMessage, authorize } from "@/lib/permissions/action";
-import { questionSchema, quizSettingsSchema, type QuestionInput } from "@/lib/validations/quiz";
+import { accommodationSchema, objectiveSchema, questionSchema, quizSettingsSchema, stimulusSchema, type QuestionInput } from "@/lib/validations/quiz";
 import { fail, invalid } from "@/lib/utils/errors";
 import { localInputToISO } from "@/lib/utils";
 import type { ActionResult } from "@/types";
@@ -201,15 +201,155 @@ export async function copyQuestionsToQuiz(targetQuizId: string, questionIds: str
 }
 
 // ---------- Grading ---------------------------------------------------------
-export async function gradeAnswer(answerId: string, points: number, attemptId: string): Promise<ActionResult> {
+export async function gradeAnswer(
+  answerId: string,
+  points: number,
+  attemptId: string,
+  extra: { feedback?: string | null; rubric?: number[] | null } = {},
+): Promise<ActionResult> {
   try {
     const { supabase } = await authorize("teacher");
     if (!Number.isFinite(points) || points < 0) return fail("Nilai tidak valid");
-    const { error } = await supabase.rpc("grade_answer", { p_answer: answerId, p_points: points });
+    if (extra.feedback && extra.feedback.length > 2000) return fail("Umpan balik maksimal 2000 karakter");
+    const { error } = await supabase.rpc("grade_answer", {
+      p_answer: answerId,
+      p_points: points,
+      p_feedback: extra.feedback?.trim() || null,
+      p_rubric: extra.rubric?.length ? extra.rubric.map((n) => (Number.isFinite(n) ? n : 0)) : null,
+    });
     if (error) return fail(error);
     revalidatePath("/teacher/grading");
     revalidatePath(`/teacher/attempts/${attemptId}`);
     return { ok: true, message: "Nilai disimpan" };
+  } catch (e) {
+    return fail(actionErrorMessage(e));
+  }
+}
+
+// ---------- Stimulus / reading passages -------------------------------------
+export async function saveStimulus(quizId: string, stimulusId: string | null, input: unknown): Promise<ActionResult<{ id: string }>> {
+  try {
+    const { supabase } = await authorize("teacher");
+    const parsed = stimulusSchema.safeParse(input);
+    if (!parsed.success) return invalid(parsed.error);
+    const query = stimulusId
+      ? supabase.from("quiz_stimuli").update(parsed.data).eq("id", stimulusId).eq("quiz_id", quizId).select("id")
+      : supabase.from("quiz_stimuli").insert({ ...parsed.data, quiz_id: quizId }).select("id");
+    const { data, error } = await query;
+    if (error) return fail(error);
+    if (!data?.length) return fail("Stimulus tidak ditemukan");
+    quizPaths(quizId);
+    return { ok: true, data: { id: data[0].id as string }, message: "Stimulus disimpan" };
+  } catch (e) {
+    return fail(actionErrorMessage(e));
+  }
+}
+
+export async function deleteStimulus(quizId: string, stimulusId: string): Promise<ActionResult> {
+  try {
+    const { supabase } = await authorize("teacher");
+    const { data, error } = await supabase.from("quiz_stimuli").delete().eq("id", stimulusId).eq("quiz_id", quizId).select("id");
+    if (error) return fail(error);
+    if (!data?.length) return fail("Stimulus tidak ditemukan");
+    quizPaths(quizId);
+    return { ok: true, message: "Stimulus dihapus (soal tetap ada)" };
+  } catch (e) {
+    return fail(actionErrorMessage(e));
+  }
+}
+
+// ---------- Learning objectives (TP) ----------------------------------------
+export async function saveObjective(objectiveId: string | null, input: unknown): Promise<ActionResult> {
+  try {
+    const { session, supabase } = await authorize("teacher");
+    const parsed = objectiveSchema.safeParse(input);
+    if (!parsed.success) return invalid(parsed.error);
+    const { error } = objectiveId
+      ? await supabase.from("learning_objectives").update(parsed.data).eq("id", objectiveId)
+      : await supabase.from("learning_objectives").insert({ ...parsed.data, school_id: session.schoolId });
+    if (error) return fail(error.code === "23505" ? "Kode TP sudah dipakai di sekolah ini" : error);
+    revalidatePath("/teacher/objectives");
+    return { ok: true, message: "Tujuan pembelajaran disimpan" };
+  } catch (e) {
+    return fail(actionErrorMessage(e));
+  }
+}
+
+export async function deleteObjective(objectiveId: string): Promise<ActionResult> {
+  try {
+    const { supabase } = await authorize("teacher");
+    const { data, error } = await supabase.from("learning_objectives").delete().eq("id", objectiveId).select("id");
+    if (error) return fail(error);
+    if (!data?.length) return fail("Hanya pembuat TP atau admin sekolah yang dapat menghapus");
+    revalidatePath("/teacher/objectives");
+    return { ok: true, message: "Tujuan pembelajaran dihapus" };
+  } catch (e) {
+    return fail(actionErrorMessage(e));
+  }
+}
+
+// ---------- Folders ---------------------------------------------------------
+export async function createFolder(name: string, color = "brand"): Promise<ActionResult<{ id: string }>> {
+  try {
+    const { session, supabase } = await authorize("teacher");
+    const clean = name.trim();
+    if (clean.length < 1 || clean.length > 80) return fail("Nama folder 1–80 karakter");
+    const { data, error } = await supabase.from("quiz_folders").insert({ name: clean, color, school_id: session.schoolId }).select("id").single();
+    if (error) return fail(error.code === "23505" ? "Folder dengan nama itu sudah ada" : error);
+    revalidatePath("/teacher/quizzes");
+    return { ok: true, data: { id: data.id as string }, message: "Folder dibuat" };
+  } catch (e) {
+    return fail(actionErrorMessage(e));
+  }
+}
+
+export async function deleteFolder(id: string): Promise<ActionResult> {
+  try {
+    const { supabase } = await authorize("teacher");
+    const { error } = await supabase.from("quiz_folders").delete().eq("id", id);
+    if (error) return fail(error);
+    revalidatePath("/teacher/quizzes");
+    return { ok: true, message: "Folder dihapus (kuis di dalamnya tidak terhapus)" };
+  } catch (e) {
+    return fail(actionErrorMessage(e));
+  }
+}
+
+export async function moveQuizToFolder(quizId: string, folderId: string | null): Promise<ActionResult> {
+  try {
+    const { supabase } = await authorize("teacher");
+    const { data, error } = await supabase.from("quizzes").update({ folder_id: folderId }).eq("id", quizId).select("id");
+    if (error) return fail(error);
+    if (!data?.length) return fail("Kuis tidak ditemukan");
+    revalidatePath("/teacher/quizzes");
+    return { ok: true, message: folderId ? "Kuis dipindahkan ke folder" : "Kuis dikeluarkan dari folder" };
+  } catch (e) {
+    return fail(actionErrorMessage(e));
+  }
+}
+
+// ---------- Accommodations --------------------------------------------------
+export async function saveAccommodation(input: unknown): Promise<ActionResult> {
+  try {
+    const { session, supabase } = await authorize("teacher");
+    const parsed = accommodationSchema.safeParse(input);
+    if (!parsed.success) return invalid(parsed.error);
+    const { student_id, ...rest } = parsed.data;
+    const isDefault = rest.time_multiplier === 1 && !rest.reduce_options && !rest.read_aloud && !rest.notes;
+    const table = () => supabase.from("student_accommodations");
+    if (isDefault) {
+      const { error } = await table().delete().eq("school_id", session.schoolId).eq("student_id", student_id);
+      if (error) return fail(error);
+    } else {
+      const { data: updated, error } = await table().update(rest).eq("school_id", session.schoolId).eq("student_id", student_id).select("id");
+      if (error) return fail(error);
+      if (!updated?.length) {
+        const { error: insertError } = await table().insert({ ...rest, student_id, school_id: session.schoolId });
+        if (insertError) return fail(insertError);
+      }
+    }
+    revalidatePath("/teacher/accommodations");
+    return { ok: true, message: isDefault ? "Akomodasi dihapus" : "Akomodasi disimpan" };
   } catch (e) {
     return fail(actionErrorMessage(e));
   }

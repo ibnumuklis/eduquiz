@@ -23,13 +23,14 @@ export async function GET(request: NextRequest, { params }: { params: Promise<{ 
   if (!report) return NextResponse.json({ error: "Not found" }, { status: 404 });
   const ranked = rankStudents(report.rows);
   const rank = new Map(ranked.map((r) => [r.attempt_id, r.rank]));
-  const headers = ["Ranking", "Nama", "NIS", "Email", "Kelas", "Percobaan ke-", "Mulai", "Dikumpulkan", "Durasi (detik)", "Benar", "Salah", "Kosong", "Menunggu koreksi", "Nilai", "Status", "Terlambat"];
+  const headers = ["Ranking", "Nama", "NIS", "Email", "Kelas", "Percobaan ke-", "Mulai", "Dikumpulkan", "Durasi (detik)", "Benar", "Salah", "Kosong", "Menunggu koreksi", "Nilai", "Status", "Terlambat", "Skor game", "Catatan integritas"];
   const rows = [...report.rows]
     .sort((a, b) => a.student_name.localeCompare(b.student_name) || a.attempt_number - b.attempt_number)
     .map((r) => [
       rank.get(r.attempt_id) ?? "", r.student_name, r.student_number ?? "", r.email, r.class_name, r.attempt_number,
       r.started_at, r.submitted_at ?? "", r.duration_seconds, r.correct_count, r.wrong_count, r.unanswered_count,
       r.pending_manual, r.score, r.passed ? "Tuntas" : "Belum tuntas", r.is_late ? "Ya" : "Tidak",
+      r.game_score ?? 0, r.integrity_count ?? 0,
     ]);
   const name = `nilai-${fileSafe(report.quiz.title)}`;
 

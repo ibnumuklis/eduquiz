@@ -16,6 +16,8 @@ export interface ReportAttempt {
   passed: boolean;
   duration_seconds: number;
   is_late: boolean;
+  game_score?: number;
+  integrity_count?: number;
 }
 
 export interface RankedStudent extends ReportAttempt {

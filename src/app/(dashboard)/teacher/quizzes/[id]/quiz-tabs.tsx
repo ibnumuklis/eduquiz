@@ -12,7 +12,7 @@ export function QuizTabs({ id, status }: { id: string; status: QuizStatus }) {
     { href: `${base}/settings`, label: "Pengaturan" },
     { href: `${base}/share`, label: "Penugasan & Bagikan" },
     { href: `${base}/preview`, label: "Preview" },
-    ...(status !== "draft" ? [{ href: `${base}/monitor`, label: "Monitoring" }, { href: `${base}/results`, label: "Laporan Nilai" }] : []),
+    ...(status !== "draft" ? [{ href: `${base}/monitor`, label: "Monitoring" }, { href: `${base}/results`, label: "Laporan Nilai" }, { href: `${base}/analysis`, label: "Analisis" }] : []),
   ];
   return (
     <nav className="-mx-4 overflow-x-auto px-4 sm:mx-0 sm:px-0" aria-label="Bagian kuis">

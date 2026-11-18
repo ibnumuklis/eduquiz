@@ -9,7 +9,7 @@ export async function getQuizReport(quizId: string) {
     supabase.from("quizzes").select("id, title, school_id, passing_grade, subject:subjects(name)").eq("id", quizId).maybeSingle(),
     supabase
       .from("quiz_results")
-      .select("attempt_id, student_id, score, correct_count, wrong_count, unanswered_count, pending_manual, passed, duration_seconds, attempt:quiz_attempts(attempt_number, started_at, submitted_at, is_late), student:profiles(full_name, email)")
+      .select("attempt_id, student_id, score, correct_count, wrong_count, unanswered_count, pending_manual, passed, duration_seconds, game_score, attempt:quiz_attempts(attempt_number, started_at, submitted_at, is_late, integrity_count), student:profiles(full_name, email)")
       .eq("quiz_id", quizId)
       .limit(5000),
     supabase.from("quiz_assignments").select("class_id, class:classes(name)").eq("quiz_id", quizId),
@@ -18,8 +18,8 @@ export async function getQuizReport(quizId: string) {
 
   type Raw = {
     attempt_id: string; student_id: string; score: number; correct_count: number; wrong_count: number; unanswered_count: number;
-    pending_manual: number; passed: boolean; duration_seconds: number;
-    attempt: { attempt_number: number; started_at: string; submitted_at: string | null; is_late: boolean };
+    pending_manual: number; passed: boolean; duration_seconds: number; game_score: number;
+    attempt: { attempt_number: number; started_at: string; submitted_at: string | null; is_late: boolean; integrity_count: number };
     student: { full_name: string; email: string };
   };
   const raw = (results ?? []) as unknown as Raw[];
@@ -58,6 +58,8 @@ export async function getQuizReport(quizId: string) {
     passed: r.passed,
     duration_seconds: r.duration_seconds,
     is_late: r.attempt?.is_late ?? false,
+    game_score: r.game_score ?? 0,
+    integrity_count: r.attempt?.integrity_count ?? 0,
   }));
   return {
     quiz: quiz as unknown as { id: string; title: string; passing_grade: number; subject: { name: string } | null },

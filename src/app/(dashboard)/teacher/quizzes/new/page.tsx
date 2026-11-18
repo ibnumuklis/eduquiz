@@ -3,6 +3,7 @@ import Link from "next/link";
 import { ArrowLeft } from "lucide-react";
 import { requireSchoolRole } from "@/lib/permissions/session";
 import { createClient } from "@/lib/supabase/server";
+import { getMyFolders } from "@/features/quizzes/queries";
 import { PageHeader } from "@/components/ui/feedback";
 import { QuizSettingsForm } from "@/components/quiz/quiz-settings-form";
 import { createQuiz } from "@/features/quizzes/actions";
@@ -13,6 +14,7 @@ export default async function NewQuizPage() {
   const session = await requireSchoolRole("teacher");
   const supabase = await createClient();
   const { data: subjects } = await supabase.from("subjects").select("id, name").eq("school_id", session.schoolId).order("name");
+  const folders = await getMyFolders(session.schoolId);
   return (
     <>
       <PageHeader
@@ -20,7 +22,7 @@ export default async function NewQuizPage() {
         title="Buat kuis baru"
         description="Atur informasi dasar. Anda bisa menambahkan soal setelah kuis tersimpan sebagai draft."
       />
-      <QuizSettingsForm action={createQuiz} subjects={subjects ?? []} timezone={session.timezone} submitLabel="Simpan & lanjut tambah soal" />
+      <QuizSettingsForm action={createQuiz} subjects={subjects ?? []} folders={folders} timezone={session.timezone} submitLabel="Simpan & lanjut tambah soal" />
     </>
   );
 }

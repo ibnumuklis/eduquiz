@@ -2,7 +2,7 @@ import "server-only";
 import { cache } from "react";
 import { notFound } from "next/navigation";
 import { createClient } from "@/lib/supabase/server";
-import type { Question, Quiz } from "@/types";
+import type { LearningObjective, Question, Quiz, Stimulus } from "@/types";
 
 export const QUIZ_MEDIA_BUCKET = "quiz-media";
 
@@ -56,3 +56,25 @@ export async function getQuizQuestions(quizId: string) {
 }
 
 export type QuestionWithImage = Awaited<ReturnType<typeof getQuizQuestions>>[number];
+
+export async function getQuizStimuli(quizId: string): Promise<Stimulus[]> {
+  const supabase = await createClient();
+  const { data } = await supabase.from("quiz_stimuli").select("id, title, content, image_path").eq("quiz_id", quizId).order("created_at");
+  const rows = (data ?? []) as Stimulus[];
+  const urls = await signImages(supabase, rows.map((s) => s.image_path));
+  return rows.map((s) => ({ ...s, image_url: s.image_path ? urls.get(s.image_path) ?? null : null }));
+}
+
+export async function getSchoolObjectives(schoolId: string, subjectId?: string | null) {
+  const supabase = await createClient();
+  let q = supabase.from("learning_objectives").select("id, code, description, subject_id, phase, grade_level, created_by").eq("school_id", schoolId).order("code");
+  if (subjectId) q = q.or(`subject_id.eq.${subjectId},subject_id.is.null`);
+  const { data } = await q;
+  return (data ?? []) as LearningObjective[];
+}
+
+export async function getMyFolders(schoolId: string) {
+  const supabase = await createClient();
+  const { data } = await supabase.from("quiz_folders").select("id, name, color").eq("school_id", schoolId).order("name");
+  return (data ?? []) as { id: string; name: string; color: string }[];
+}

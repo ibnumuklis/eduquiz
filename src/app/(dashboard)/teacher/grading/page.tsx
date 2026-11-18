@@ -14,7 +14,7 @@ export default async function GradingPage() {
   const supabase = await createClient();
   const { data } = await supabase
     .from("student_answers")
-    .select("id, attempt_id, text_answer, updated_at, question:quiz_questions!inner(prompt, points, accepted_answers, quiz:quizzes!inner(id, title, teacher_id)), student:profiles(full_name)")
+    .select("id, attempt_id, text_answer, updated_at, question:quiz_questions!inner(prompt, type, payload, points, accepted_answers, quiz:quizzes!inner(id, title, teacher_id)), student:profiles(full_name)")
     .eq("school_id", session.schoolId)
     .eq("needs_manual_grading", true)
     .eq("question.quiz.teacher_id", session.userId)

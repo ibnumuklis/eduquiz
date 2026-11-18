@@ -2,7 +2,7 @@
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import {
-  Award, BarChart3, BookOpen, Building2, ClipboardCheck, ClipboardList, GraduationCap, History, KeyRound,
+  Accessibility, Award, BarChart3, Target, BookOpen, Building2, ClipboardCheck, ClipboardList, GraduationCap, History, KeyRound,
   LayoutDashboard, Library, Mail, ScrollText, Settings, Shield, Trophy, Users, UserSquare2, X,
 } from "lucide-react";
 import type { ComponentType } from "react";
@@ -19,6 +19,8 @@ const teacherTools: NavItem[] = [
   { href: "/teacher/bank", label: "Bank Soal", icon: Library },
   { href: "/teacher/grading", label: "Koreksi Jawaban", icon: ClipboardCheck },
   { href: "/teacher/classes", label: "Kelas Saya", icon: GraduationCap },
+  { href: "/teacher/objectives", label: "TP / CP", icon: Target },
+  { href: "/teacher/accommodations", label: "Akomodasi Siswa", icon: Accessibility },
 ];
 
 function sectionsFor(role: AppRole | null, isSuperAdmin: boolean): NavSection[] {

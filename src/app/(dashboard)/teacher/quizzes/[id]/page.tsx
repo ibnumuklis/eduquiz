@@ -1,6 +1,6 @@
 import type { Metadata } from "next";
 import { requireSchoolRole } from "@/lib/permissions/session";
-import { getManagedQuiz, getQuizQuestions } from "@/features/quizzes/queries";
+import { getManagedQuiz, getQuizQuestions, getQuizStimuli, getSchoolObjectives } from "@/features/quizzes/queries";
 import { createClient } from "@/lib/supabase/server";
 import { Alert } from "@/components/ui/feedback";
 import { QuestionBuilder } from "./question-builder";
@@ -12,7 +12,7 @@ export default async function QuizQuestionsPage({ params, searchParams }: { para
   const { id } = await params;
   const { created } = await searchParams;
   const quiz = await getManagedQuiz(id);
-  const questions = await getQuizQuestions(id);
+  const [questions, stimuli, objectives] = await Promise.all([getQuizQuestions(id), getQuizStimuli(id), getSchoolObjectives(quiz.school_id)]);
   const supabase = await createClient();
   const { count } = await supabase.from("quiz_attempts").select("id", { count: "exact", head: true }).eq("quiz_id", id);
 
@@ -24,7 +24,7 @@ export default async function QuizQuestionsPage({ params, searchParams }: { para
           Perubahan kunci jawaban hanya berlaku untuk pengerjaan yang belum dikumpulkan. Nilai yang sudah ada tidak dihitung ulang.
         </Alert>
       )}
-      <QuestionBuilder quizId={quiz.id} schoolId={quiz.school_id} questions={questions} />
+      <QuestionBuilder quizId={quiz.id} schoolId={quiz.school_id} questions={questions} stimuli={stimuli} objectives={objectives} />
     </>
   );
 }
