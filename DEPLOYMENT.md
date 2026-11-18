@@ -30,6 +30,14 @@ Repository: `ibnumuklis/eduquiz` (privat). CI (`.github/workflows/ci.yml`) menja
 
 ## 3. Vercel
 
+Status saat ini: project `eduquiz` (team `ulfa-mafridoh`), produksi di **https://eduquiz-sand-pi.vercel.app**,
+region fungsi **hnd1 (Tokyo)** — sama dengan region Supabase (`ap-northeast-1`) agar latensi database rendah.
+Supabase project ref: `fzqunwwdeuoqcyckyyfj`.
+
+> Penting: Settings → Deployment Protection → **Vercel Authentication** harus "Only Preview Deployments"
+> (atau dimatikan). Mode bawaan "All except custom domains" membuat domain `*.vercel.app` produksi meminta
+> login Vercel sehingga guru/siswa tidak bisa masuk.
+
 1. Import repository GitHub → framework Next.js (otomatis).
 2. Environment variables (Production & Preview) — lihat ENVIRONMENT.md:
    `NEXT_PUBLIC_SUPABASE_URL`, `NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY`, `NEXT_PUBLIC_SITE_URL`, opsional `SUPABASE_SERVICE_ROLE_KEY`.
