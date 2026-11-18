@@ -124,3 +124,20 @@ export const OPTION_STYLES = [
 ];
 
 export const TEXT_TYPES = new Set(["short_answer", "fill_blank", "word_cloud"]);
+
+/** Text read aloud for a Live question: the prompt followed by its answer choices. */
+export function liveSpeechText(q: NonNullable<LiveState["question"]>, withOptions = true) {
+  const opts = withOptions && !TEXT_TYPES.has(q.type) && q.options.length
+    ? ` ${q.options.map((o, i) => `${String.fromCharCode(65 + i)}: ${o.label}`).join(". ")}.`
+    : "";
+  return `${q.prompt}${/[.!?]$/.test(q.prompt.trim()) ? "" : "."}${opts}`;
+}
+
+/** Text read after the answer is revealed: the correct answer and explanation. */
+export function liveRevealText(q: NonNullable<LiveState["question"]>, lang: string) {
+  const en = lang.startsWith("en");
+  const correct = q.type === "poll" || q.type === "word_cloud" ? []
+    : q.options.filter((o) => o.is_correct).map((o) => o.label).concat(q.accepted_answers ?? []);
+  const head = correct.length ? `${en ? "The answer is" : "Jawaban yang benar:"} ${correct.join(", ")}.` : "";
+  return [head, q.explanation ?? ""].filter(Boolean).join(" ");
+}

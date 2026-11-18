@@ -8,7 +8,10 @@ import { dbErrorMessage } from "@/lib/utils/errors";
 import { MathText } from "@/components/quiz/math-text";
 import { Tip } from "@/components/ui/tooltip";
 import { cn } from "@/lib/utils";
-import { useCountdown, useLive, OPTION_STYLES, TEXT_TYPES } from "./use-live";
+import { ReadAloudButton } from "@/components/quiz/read-aloud";
+import { SPEECH_LANG } from "@/lib/validations/quiz";
+import type { QuizLanguage } from "@/types";
+import { liveRevealText, liveSpeechText, useCountdown, useLive, OPTION_STYLES, TEXT_TYPES } from "./use-live";
 import { Leaderboard, LiveShell, Podium, TimerRing } from "./live-shared";
 
 export function LiveHost({ initial }: { initial: LiveState }) {
@@ -16,6 +19,15 @@ export function LiveHost({ initial }: { initial: LiveState }) {
   const left = useCountdown(state, serverNow);
   const [pending, setPending] = useState(false);
   const [full, setFull] = useState(false);
+  const [autoRead, setAutoRead] = useState(false);
+  useEffect(() => {
+    try { if (localStorage.getItem("eq-live-autoread") === "1") setTimeout(() => setAutoRead(true), 0); } catch { /* ignore */ }
+  }, []);
+  const toggleAutoRead = () => setAutoRead((v) => {
+    try { localStorage.setItem("eq-live-autoread", v ? "0" : "1"); } catch { /* ignore */ }
+    return !v;
+  });
+  const speechLang = SPEECH_LANG[(state.quiz.language ?? "id") as QuizLanguage] ?? "id-ID";
   const autoRevealed = useRef<string | null>(null);
   const s = state.session;
   const q = state.question;
@@ -113,6 +125,21 @@ export function LiveHost({ initial }: { initial: LiveState }) {
           <div className="mx-auto flex w-full max-w-6xl flex-1 flex-col gap-6">
             <div className="flex items-start gap-6">
               <div className="flex-1 rounded-3xl bg-white p-6 text-slate-900 shadow-2xl sm:p-8">
+                <div className="mb-3 flex flex-wrap items-center justify-end gap-2">
+                  {s.status === "question" ? (
+                    <ReadAloudButton key={`q-${q.id}`} text={liveSpeechText(q)} lang={speechLang}
+                      prominent={autoRead} autoKey={autoRead ? `${s.id}-${s.current_index}` : undefined} />
+                  ) : liveRevealText(q, speechLang) ? (
+                    <ReadAloudButton key={`r-${q.id}`} text={liveRevealText(q, speechLang)} lang={speechLang} />
+                  ) : null}
+                  <Tip content="Bacakan soal & pilihan otomatis setiap soal baru tampil">
+                    <button type="button" onClick={toggleAutoRead} aria-pressed={autoRead}
+                      className={cn("rounded-full px-3 py-1.5 text-xs font-semibold transition",
+                        autoRead ? "bg-violet-100 text-violet-700" : "bg-slate-100 text-slate-500 hover:bg-slate-200")}>
+                      Otomatis {autoRead ? "aktif" : "mati"}
+                    </button>
+                  </Tip>
+                </div>
                 <MathText text={q.prompt} className="whitespace-pre-wrap text-2xl font-bold leading-snug sm:text-3xl" />
                 {q.image_url && (
                   // eslint-disable-next-line @next/next/no-img-element

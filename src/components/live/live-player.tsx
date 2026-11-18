@@ -7,7 +7,10 @@ import type { LiveState } from "@/features/live/actions";
 import { dbErrorMessage } from "@/lib/utils/errors";
 import { MathText } from "@/components/quiz/math-text";
 import { cn } from "@/lib/utils";
-import { useCountdown, useLive, OPTION_STYLES, TEXT_TYPES } from "./use-live";
+import { ReadAloudButton } from "@/components/quiz/read-aloud";
+import { SPEECH_LANG } from "@/lib/validations/quiz";
+import type { QuizLanguage } from "@/types";
+import { liveRevealText, liveSpeechText, useCountdown, useLive, OPTION_STYLES, TEXT_TYPES } from "./use-live";
 import { Leaderboard, LiveShell, Podium, TimerRing } from "./live-shared";
 
 export function LivePlayer({ initial }: { initial: LiveState }) {
@@ -21,6 +24,7 @@ export function LivePlayer({ initial }: { initial: LiveState }) {
   const s = state.session;
   const q = state.question;
   const me = state.me;
+  const speechLang = SPEECH_LANG[(state.quiz.language ?? "id") as QuizLanguage] ?? "id-ID";
 
   useEffect(() => {
     if (lastIndex.current !== s.current_index) {
@@ -83,7 +87,10 @@ export function LivePlayer({ initial }: { initial: LiveState }) {
             <div className="flex flex-1 flex-col gap-4">
               <div className="flex items-start gap-3">
                 <div className="flex-1 rounded-2xl bg-white p-4 text-slate-900">
-                  <p className="text-xs font-semibold text-slate-400">Soal {s.current_index + 1}/{s.total}</p>
+                  <div className="flex items-center justify-between gap-2">
+                    <p className="text-xs font-semibold text-slate-400">Soal {s.current_index + 1}/{s.total}</p>
+                    <ReadAloudButton key={`q-${q.id}`} text={liveSpeechText(q)} lang={speechLang} />
+                  </div>
                   <MathText text={q.prompt} className="mt-1 whitespace-pre-wrap text-lg font-bold" />
                   {q.image_url && (
                     // eslint-disable-next-line @next/next/no-img-element
@@ -144,6 +151,7 @@ export function LivePlayer({ initial }: { initial: LiveState }) {
             )}
             {me?.rank ? <p className="mt-6 rounded-full bg-white/10 px-4 py-2">Peringkatmu sekarang: <b>#{me.rank}</b></p> : null}
             {q.explanation && <div className="mt-6 max-w-lg rounded-2xl bg-white/10 p-4 text-left text-sm"><MathText text={q.explanation} className="whitespace-pre-wrap" /></div>}
+            {liveRevealText(q, speechLang) && <div className="mt-4"><ReadAloudButton key={`r-${q.id}`} text={liveRevealText(q, speechLang)} lang={speechLang} /></div>}
           </Center>
         )}
 

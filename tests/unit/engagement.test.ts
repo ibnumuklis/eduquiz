@@ -22,3 +22,20 @@ describe("hasMath", () => {
     expect(hasMath(null)).toBe(false);
   });
 });
+
+import { liveRevealText, liveSpeechText } from "@/components/live/use-live";
+
+describe("live read-aloud text", () => {
+  const q = {
+    id: "q", type: "multiple_choice", prompt: "Ibu kota Sulawesi Selatan adalah", image_path: null, points: 1,
+    options: [{ id: "a", label: "Makassar", is_correct: true }, { id: "b", label: "Gowa", is_correct: false }],
+    explanation: "Makassar adalah ibu kota provinsi.",
+  };
+  it("reads the prompt then lettered choices", () => {
+    expect(liveSpeechText(q)).toBe("Ibu kota Sulawesi Selatan adalah. A: Makassar. B: Gowa.");
+  });
+  it("reads the correct answer and explanation after reveal", () => {
+    expect(liveRevealText(q, "id-ID")).toBe("Jawaban yang benar: Makassar. Makassar adalah ibu kota provinsi.");
+    expect(liveRevealText({ ...q, type: "poll", explanation: null }, "en-US")).toBe("");
+  });
+});
