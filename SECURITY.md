@@ -77,3 +77,11 @@ E2E smoke (`tests/e2e/smoke.spec.ts`) memverifikasi semua area peran & API lapor
 ## Melaporkan celah
 
 Hubungi pengelola repository secara privat; jangan membuka issue publik.
+
+## Mode Live & bank sekolah
+
+- Kunci jawaban Live tidak dikirim ke siswa sebelum tahap *reveal*; `live_state` menyaring per peran (host/pemain).
+- Skor dihitung di server (`live_answer`) dari jam server, sehingga waktu/klik dari klien tidak bisa dimanipulasi.
+- Tabel Live hanya bisa dibaca peserta/host sesi itu; tidak ada izin INSERT/UPDATE langsung.
+- Bank soal bersama hanya untuk staf sekolah yang sama dan hanya kuis yang ditandai `shared_with_school`.
+- Alarm anti-curang hanya **sinyal** di perangkat siswa; keputusan tetap di guru melalui log integritas.

@@ -15,8 +15,11 @@ import { dbErrorMessage } from "@/lib/utils/errors";
 import { CHEERS, ENCOURAGE, pickLine } from "@/lib/utils/quiz";
 import { QUESTION_TYPE_LABEL, SURVEY_TYPES } from "@/lib/validations/quiz";
 import { QuestionInput, isAnswered, type Answer } from "./question-input";
-import { FullscreenGate, IntegrityBadge, Watermark, useIntegrity } from "./integrity";
+import { FullscreenGate, IntegrityBadge, IntegrityWarning, Watermark, useIntegrity } from "./integrity";
 import { ReadAloudButton } from "./read-aloud";
+import { MathText } from "./math-text";
+import { QuestionAudio } from "./audio-player";
+import { SPEECH_LANG } from "@/lib/validations/quiz";
 import type { AttemptPayload, AttemptQuestion, PowerupKind } from "@/types";
 
 type SaveState = "idle" | "saving" | "saved" | "offline" | "error";
@@ -82,6 +85,7 @@ export function QuizPlayer({ payload, preview = false }: { payload: AttemptPaylo
     blockClipboard: mode === "exam",
     initialCount: payload.attempt.integrity_count ?? 0,
     active: !preview,
+    alarm: quiz.integrity_alarm ?? true,
   });
 
   // ---- Timer synced to server clock ----
@@ -309,6 +313,9 @@ export function QuizPlayer({ payload, preview = false }: { payload: AttemptPaylo
   return (
     <div className={cn("min-h-dvh", `quiz-theme-${theme}`)}>
       {showGate && <FullscreenGate onEnter={integrity.enterFullscreen} returning={integrity.count > 0} />}
+      {!preview && integrity.warning && !showGate && (
+        <IntegrityWarning reason={integrity.warning} count={integrity.count} onClose={integrity.dismissWarning} />
+      )}
       {!preview && quiz.show_watermark && (
         <Watermark text={`${payload.student?.full_name ?? "Siswa"}${payload.student?.student_number ? ` · ${payload.student.student_number}` : ""}`} />
       )}
@@ -367,7 +374,7 @@ export function QuizPlayer({ payload, preview = false }: { payload: AttemptPaylo
                 <summary className="flex cursor-pointer items-center gap-2 text-sm font-bold text-violet-900">
                   <BookText className="h-4 w-4" /> {q.stimulus.title || "Bacaan / stimulus"}
                 </summary>
-                <div className="mt-3 max-h-[45vh] overflow-y-auto whitespace-pre-wrap text-sm leading-relaxed text-slate-800 sm:text-base">{q.stimulus.content}</div>
+                <div className="mt-3 max-h-[45vh] overflow-y-auto whitespace-pre-wrap text-sm leading-relaxed text-slate-800 sm:text-base"><MathText text={q.stimulus.content} /></div>
                 {q.stimulus.image_url && (
                   // eslint-disable-next-line @next/next/no-img-element
                   <img src={q.stimulus.image_url} alt="Gambar stimulus" className="mt-3 max-h-80 rounded-2xl border border-violet-200 object-contain" />
@@ -378,15 +385,16 @@ export function QuizPlayer({ payload, preview = false }: { payload: AttemptPaylo
               <div className="flex flex-wrap items-center justify-between gap-2">
                 <span className="rounded-full bg-brand-50 px-3 py-1 text-xs font-bold text-brand-700">Soal {index + 1} dari {questions.length}</span>
                 <div className="flex items-center gap-2">
-                  <ReadAloudButton text={speakableText(q)} prominent={readAloudPreferred} autoKey={readAloudPreferred ? q.id : undefined} />
+                  <ReadAloudButton text={speakableText(q)} prominent={readAloudPreferred} autoKey={readAloudPreferred ? q.id : undefined} lang={SPEECH_LANG[quiz.language ?? "id"]} />
                   <span className="text-xs text-slate-500">{QUESTION_TYPE_LABEL[q.type]}{SURVEY_TYPES.has(q.type) ? "" : ` · ${Number(q.points)} poin`}</span>
                 </div>
               </div>
-              <h2 id="q-title" className="mt-4 whitespace-pre-wrap text-lg font-semibold leading-relaxed text-slate-900">{q.prompt}</h2>
+              <h2 id="q-title" className="mt-4 whitespace-pre-wrap text-lg font-semibold leading-relaxed text-slate-900"><MathText text={q.prompt} /></h2>
               {q.image_url && (
                 // eslint-disable-next-line @next/next/no-img-element
                 <img src={q.image_url} alt="Gambar soal" className="mt-4 max-h-80 rounded-2xl border border-slate-200 object-contain" />
               )}
+              {q.audio_url && <QuestionAudio key={q.id} src={q.audio_url} maxPlays={preview ? 0 : q.audio_max_plays ?? 0} storageKey={preview ? undefined : `eq-audio-${attemptId}-${q.id}`} />}
               {q.type === "multiple_select" && <p className="mt-2 text-sm text-violet-600">Pilih semua jawaban yang benar.</p>}
               {q.type === "tf_grid" && <p className="mt-2 text-sm text-violet-600">Tentukan Benar atau Salah untuk setiap pernyataan.</p>}
               {q.type === "matching" && <p className="mt-2 text-sm text-violet-600">Pasangkan setiap pernyataan dengan jawaban yang sesuai.</p>}
@@ -415,7 +423,7 @@ export function QuizPlayer({ payload, preview = false }: { payload: AttemptPaylo
                       : <><XCircle className="h-5 w-5" /> Belum tepat. {pickLine(ENCOURAGE, q.id)}</>}
                   </p>
                   <KeyReveal q={q} fb={fb} />
-                  {fb.explanation && <p className="mt-2 whitespace-pre-wrap text-sm opacity-90">{fb.explanation}</p>}
+                  {fb.explanation && <p className="mt-2 whitespace-pre-wrap text-sm opacity-90"><MathText text={fb.explanation} /></p>}
                   {fb.can_retry && powerupsOn && !used.has("second_chance") && (
                     <Button size="sm" variant="outline" className="mt-3" loading={powerBusy} onClick={() => powerup("second_chance")}>
                       <RotateCcw className="h-4 w-4" /> Pakai Kesempatan Kedua

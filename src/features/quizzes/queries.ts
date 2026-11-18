@@ -51,8 +51,12 @@ export async function getQuizQuestions(quizId: string) {
     points: Number(q.points),
     question_options: [...q.question_options].sort((a, b) => a.position - b.position),
   }));
-  const urls = await signImages(supabase, questions.map((q) => q.image_path));
-  return questions.map((q) => ({ ...q, image_url: q.image_path ? urls.get(q.image_path) ?? null : null }));
+  const urls = await signImages(supabase, questions.flatMap((q) => [q.image_path, q.payload?.audio_path]));
+  return questions.map((q) => ({
+    ...q,
+    image_url: q.image_path ? urls.get(q.image_path) ?? null : null,
+    audio_url: q.payload?.audio_path ? urls.get(q.payload.audio_path) ?? null : null,
+  }));
 }
 
 export type QuestionWithImage = Awaited<ReturnType<typeof getQuizQuestions>>[number];

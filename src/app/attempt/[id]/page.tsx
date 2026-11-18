@@ -16,10 +16,11 @@ export default async function AttemptPage({ params }: { params: Promise<{ id: st
   if (error || !data) notFound();
   const payload = data as AttemptPayload;
   if (payload.attempt.status !== "in_progress") redirect(`/student/results/${id}`);
-  const urls = await signImages(supabase, payload.questions.flatMap((q) => [q.image_path, q.stimulus?.image_path]));
+  const urls = await signImages(supabase, payload.questions.flatMap((q) => [q.image_path, q.stimulus?.image_path, q.audio_path]));
   payload.questions = payload.questions.map((q) => ({
     ...q,
     image_url: q.image_path ? urls.get(q.image_path) ?? null : null,
+    audio_url: q.audio_path ? urls.get(q.audio_path) ?? null : null,
     stimulus: q.stimulus ? { ...q.stimulus, image_url: q.stimulus.image_path ? urls.get(q.stimulus.image_path) ?? null : null } : null,
   }));
   return <QuizPlayer payload={payload} />;

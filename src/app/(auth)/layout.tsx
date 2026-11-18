@@ -16,8 +16,8 @@ export default function AuthLayout({ children }: { children: React.ReactNode }) 
           </p>
           <ul className="mt-8 space-y-4 text-sm">
             {[
-              { icon: Sparkles, text: "Question builder dengan 5 tipe soal & penilaian otomatis" },
-              { icon: BarChart3, text: "Monitoring realtime & laporan nilai siap ekspor" },
+              { icon: Sparkles, text: "11 tipe soal termasuk format AKM, rumus & audio, penilaian otomatis" },
+              { icon: BarChart3, text: "Mode Live, monitoring realtime & rapor TP siap unduh PDF" },
               { icon: Award, text: "XP, level, badge, dan leaderboard kelas" },
             ].map(({ icon: Icon, text }) => (
               <li key={text} className="flex items-center gap-3">

@@ -6,6 +6,7 @@ import { Badge } from "@/components/ui/feedback";
 import { quizState } from "@/lib/utils/quiz";
 import { QuizTabs } from "./quiz-tabs";
 import { QuizStatusActions } from "./quiz-status-actions";
+import { LiveStartButton } from "./live-start-button";
 
 export default async function QuizLayout({ children, params }: { children: React.ReactNode; params: Promise<{ id: string }> }) {
   await requireSchoolRole("teacher");
@@ -27,7 +28,10 @@ export default async function QuizLayout({ children, params }: { children: React
               <span className="font-mono font-bold text-brand-700">{quiz.access_code}</span>
             </p>
           </div>
-          <QuizStatusActions id={quiz.id} status={quiz.status} />
+          <div className="flex flex-wrap items-center gap-2">
+            <LiveStartButton quizId={quiz.id} />
+            <QuizStatusActions id={quiz.id} status={quiz.status} />
+          </div>
         </div>
       </div>
       <QuizTabs id={quiz.id} status={quiz.status} />

@@ -41,6 +41,16 @@ export const QUIZ_MODE_META: Record<(typeof QUIZ_MODES)[number], { label: string
   exam: { label: "Ujian", description: "Tanpa gamifikasi & power-up, cocok untuk penilaian sumatif." },
 };
 
+export const QUIZ_LANGUAGES = ["id", "en", "ar", "ja", "ko", "zh", "fr", "de"] as const;
+export const QUIZ_LANGUAGE_LABEL: Record<(typeof QUIZ_LANGUAGES)[number], string> = {
+  id: "Bahasa Indonesia", en: "English", ar: "العربية (Arab)", ja: "日本語 (Jepang)", ko: "한국어 (Korea)",
+  zh: "中文 (Mandarin)", fr: "Français (Prancis)", de: "Deutsch (Jerman)",
+};
+/** BCP-47 tags used to pick text-to-speech voices. */
+export const SPEECH_LANG: Record<(typeof QUIZ_LANGUAGES)[number], string> = {
+  id: "id-ID", en: "en-US", ar: "ar-SA", ja: "ja-JP", ko: "ko-KR", zh: "zh-CN", fr: "fr-FR", de: "de-DE",
+};
+
 export const QUIZ_THEMES = ["default", "batik", "nusantara", "angkasa", "laut", "hutan"] as const;
 export const QUIZ_THEME_LABEL: Record<(typeof QUIZ_THEMES)[number], string> = {
   default: "EDUQUIZ (bawaan)",
@@ -68,6 +78,9 @@ export const quizSettingsSchema = z
     mode: z.enum(QUIZ_MODES).default("standard"),
     mastery_target: z.coerce.number().min(0).max(100).default(80),
     theme: z.enum(QUIZ_THEMES).default("default"),
+    language: z.enum(QUIZ_LANGUAGES).default("id"),
+    integrity_alarm: bool,
+    shared_with_school: bool,
     shuffle_questions: bool,
     shuffle_options: bool,
     show_result: bool,
@@ -113,10 +126,12 @@ export const questionSchema = z
     payload: z
       .object({
         hint: z.string().trim().max(1000).optional().default(""),
+        audio_path: z.string().max(500).nullable().optional(),
+        audio_max_plays: z.coerce.number().int().min(0).max(10).optional().default(0),
         rubric: z.array(rubricItemSchema).max(10).optional().default([]),
       })
       .optional()
-      .default({ hint: "", rubric: [] }),
+      .default({ hint: "", rubric: [], audio_max_plays: 0 }),
   })
   .superRefine((q, ctx) => {
     if (OPTION_TYPES.has(q.type)) {

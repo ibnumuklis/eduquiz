@@ -4,6 +4,7 @@ import { Badge } from "@/components/ui/feedback";
 import { QUESTION_TYPE_LABEL, SURVEY_TYPES } from "@/lib/validations/quiz";
 import { cn, formatScore } from "@/lib/utils";
 import { GradePanel } from "./grade-panel";
+import { MathText } from "./math-text";
 import type { ReviewItem } from "@/types";
 
 const CHOICE = new Set(["multiple_choice", "multiple_select", "true_false", "poll"]);
@@ -29,7 +30,7 @@ function AnswerBody({ it, showKeys }: { it: ReviewItem; showKeys: boolean }) {
                 : picked ? (!survey && showKeys ? "border-rose-300 bg-rose-50 text-rose-800" : "border-brand-300 bg-brand-50 text-brand-800")
                 : "border-slate-100 text-slate-600")}>
               <span className="text-xs font-bold opacity-60">{String.fromCharCode(65 + k)}</span>
-              <span className="flex-1">{o.label}</span>
+              <span className="flex-1"><MathText text={o.label} /></span>
               {picked && <Badge tone="brand">Jawaban</Badge>}
               {!survey && showKeys && o.is_correct && <CheckCircle2 className="h-4 w-4 text-emerald-600" />}
             </li>
@@ -50,7 +51,7 @@ function AnswerBody({ it, showKeys }: { it: ReviewItem; showKeys: boolean }) {
           const ok = showKeys && typeof v === "boolean" && v === o.is_correct;
           return (
             <div key={o.id} className="grid grid-cols-[1fr_80px_80px] items-center border-t border-slate-100 px-3 py-2">
-              <span>{i + 1}. {o.label}</span>
+              <span>{i + 1}. <MathText text={o.label} /></span>
               <span className={cn("text-center font-semibold", showKeys ? (ok ? "text-emerald-600" : "text-rose-600") : "text-brand-700")}>
                 {typeof v === "boolean" ? (v ? "Benar" : "Salah") : "—"}
               </span>
@@ -138,7 +139,7 @@ export function ReviewList({ items, showKeys, attemptId, canGrade = false }: { i
             {showStim && it.stimulus && (
               <details className="mb-3 rounded-xl bg-violet-50 px-4 py-3 text-sm text-slate-700">
                 <summary className="flex cursor-pointer items-center gap-2 font-semibold text-violet-900"><BookText className="h-4 w-4" /> {it.stimulus.title || "Stimulus"}</summary>
-                <p className="mt-2 whitespace-pre-wrap">{it.stimulus.content}</p>
+                <p className="mt-2 whitespace-pre-wrap"><MathText text={it.stimulus.content} /></p>
               </details>
             )}
             <div className="flex flex-wrap items-center justify-between gap-2">
@@ -152,11 +153,12 @@ export function ReviewList({ items, showKeys, attemptId, canGrade = false }: { i
                 {meta.label}{survey ? "" : ` · ${a.points_awarded === null ? "?" : formatScore(a.points_awarded)}/${formatScore(it.points)}`}
               </Badge>
             </div>
-            <p className="mt-3 whitespace-pre-wrap font-medium text-slate-800">{it.prompt}</p>
+            <p className="mt-3 whitespace-pre-wrap font-medium text-slate-800"><MathText text={it.prompt} /></p>
             {it.image_url && (
               // eslint-disable-next-line @next/next/no-img-element
               <img src={it.image_url} alt="Gambar soal" className="mt-3 max-h-60 rounded-xl border border-slate-200" />
             )}
+            {it.audio_url && <audio src={it.audio_url} controls preload="none" className="mt-3 w-full" />}
             <AnswerBody it={it} showKeys={showKeys} />
             {a.teacher_feedback && (
               <div className="mt-3 flex gap-2 rounded-xl border-l-4 border-violet-400 bg-violet-50/70 px-4 py-3 text-sm text-slate-700">
@@ -167,7 +169,7 @@ export function ReviewList({ items, showKeys, attemptId, canGrade = false }: { i
             {showKeys && it.explanation && (
               <div className="mt-3 rounded-xl border-l-4 border-brand-400 bg-brand-50/60 px-4 py-3 text-sm text-slate-700">
                 <p className="mb-1 text-xs font-bold uppercase tracking-wide text-brand-700">Pembahasan</p>
-                <p className="whitespace-pre-wrap">{it.explanation}</p>
+                <p className="whitespace-pre-wrap"><MathText text={it.explanation} /></p>
               </div>
             )}
             {manualGradable && a.answer_id && (

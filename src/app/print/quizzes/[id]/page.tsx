@@ -4,6 +4,7 @@ import { getManagedQuiz, getQuizQuestions, getQuizStimuli } from "@/features/qui
 import { QUESTION_TYPE_LABEL, SURVEY_TYPES } from "@/lib/validations/quiz";
 import { keySummary } from "@/lib/utils/quiz";
 import { PrintToolbar } from "./print-toolbar";
+import { MathText } from "@/components/quiz/math-text";
 
 export const metadata: Metadata = { title: "Cetak Lembar Kerja" };
 
@@ -57,7 +58,7 @@ export default async function PrintQuizPage({ params, searchParams }: { params: 
                 {showStim && stim && (
                   <div className="mb-3 rounded border border-black p-3 text-sm">
                     {stim.title && <p className="mb-1 font-bold">{stim.title}</p>}
-                    <p className="whitespace-pre-wrap">{stim.content}</p>
+                    <p className="whitespace-pre-wrap"><MathText text={stim.content} /></p>
                     {stim.image_url && (
                       // eslint-disable-next-line @next/next/no-img-element
                       <img src={stim.image_url} alt="" className="mt-2 max-h-64" />
@@ -67,15 +68,16 @@ export default async function PrintQuizPage({ params, searchParams }: { params: 
                 <div className="flex gap-2">
                   <span className="font-bold">{i + 1}.</span>
                   <div className="min-w-0 flex-1">
-                    <p className="whitespace-pre-wrap">{q.prompt}</p>
+                    <p className="whitespace-pre-wrap"><MathText text={q.prompt} /></p>
                     {INSTRUCTION[q.type] && <p className="text-xs italic text-slate-600">{INSTRUCTION[q.type]}</p>}
                     {q.image_url && (
                       // eslint-disable-next-line @next/next/no-img-element
                       <img src={q.image_url} alt="" className="mt-2 max-h-56" />
                     )}
+                    {q.payload?.audio_path && <p className="mt-1 text-xs italic">🎧 Soal ini memakai audio — putar dari EDUQUIZ.</p>}
                     {(q.type === "multiple_choice" || q.type === "multiple_select" || q.type === "poll") && (
                       <ol className="mt-1 grid gap-x-6 sm:grid-cols-2 print:grid-cols-2">
-                        {opts.map((o, k) => <li key={o.id} className={withKey && o.is_correct ? "font-bold underline" : ""}>{String.fromCharCode(65 + k)}. {o.label}</li>)}
+                        {opts.map((o, k) => <li key={o.id} className={withKey && o.is_correct ? "font-bold underline" : ""}>{String.fromCharCode(65 + k)}. <MathText text={o.label} /></li>)}
                       </ol>
                     )}
                     {q.type === "true_false" && <p className="mt-1">B &nbsp;/&nbsp; S</p>}
@@ -83,7 +85,7 @@ export default async function PrintQuizPage({ params, searchParams }: { params: 
                       <table className="mt-1 w-full border-collapse text-sm">
                         <thead><tr><th className="border border-black px-2 text-left">Pernyataan</th><th className="w-16 border border-black">Benar</th><th className="w-16 border border-black">Salah</th></tr></thead>
                         <tbody>{opts.map((o, k) => (
-                          <tr key={o.id}><td className="border border-black px-2">{k + 1}. {o.label}</td>
+                          <tr key={o.id}><td className="border border-black px-2">{k + 1}. <MathText text={o.label} /></td>
                             <td className="border border-black text-center">{withKey && o.is_correct ? "✓" : ""}</td>
                             <td className="border border-black text-center">{withKey && !o.is_correct ? "✓" : ""}</td></tr>
                         ))}</tbody>
@@ -113,7 +115,7 @@ export default async function PrintQuizPage({ params, searchParams }: { params: 
                     {withKey && q.type === "essay" && q.payload?.rubric?.length ? (
                       <ul className="mt-1 list-inside list-disc text-sm">{q.payload.rubric.map((r, k) => <li key={k}>{r.criterion} ({r.points})</li>)}</ul>
                     ) : null}
-                    {withKey && q.explanation && <p className="mt-1 text-sm italic">Pembahasan: {q.explanation}</p>}
+                    {withKey && q.explanation && <p className="mt-1 text-sm italic">Pembahasan: <MathText text={q.explanation} /></p>}
                   </div>
                 </div>
               </li>

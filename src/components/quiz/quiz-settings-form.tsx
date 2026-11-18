@@ -4,7 +4,7 @@ import { Card, CardBody, CardHeader } from "@/components/ui/card";
 import { Field, Input, Select, Textarea, Toggle } from "@/components/ui/form";
 import { FormResult, SubmitButton, fieldError } from "@/components/forms/form-kit";
 import { cn, isoToLocalInput } from "@/lib/utils";
-import { QUIZ_MODES, QUIZ_MODE_META, QUIZ_THEMES, QUIZ_THEME_LABEL } from "@/lib/validations/quiz";
+import { QUIZ_LANGUAGES, QUIZ_LANGUAGE_LABEL, QUIZ_MODES, QUIZ_MODE_META, QUIZ_THEMES, QUIZ_THEME_LABEL } from "@/lib/validations/quiz";
 import type { ActionResult, Quiz, QuizMode } from "@/types";
 
 type Action = (prev: ActionResult | null, fd: FormData) => Promise<ActionResult>;
@@ -35,6 +35,8 @@ export function QuizSettingsForm({
     show_watermark: initial?.show_watermark ?? false,
     powerups_enabled: initial?.powerups_enabled ?? false,
     instant_feedback: initial?.instant_feedback ?? false,
+    integrity_alarm: initial?.integrity_alarm ?? true,
+    shared_with_school: initial?.shared_with_school ?? false,
   });
   const [mode, setMode] = useState<QuizMode>(initial?.mode ?? "standard");
   const exam = mode === "exam";
@@ -69,6 +71,8 @@ export function QuizSettingsForm({
                 </Select>
               </Field>
             </div>
+            <Toggle name="shared_with_school" checked={t.shared_with_school} onChange={(v) => setT({ ...t, shared_with_school: v })}
+              label="Bagikan soal ke guru lain di sekolah" description="Soal kuis ini muncul di Bank Soal → tab Bank Sekolah agar bisa disalin guru lain (kunci jawaban ikut tersalin)." />
           </CardBody>
         </Card>
         <Card>
@@ -143,6 +147,7 @@ export function QuizSettingsForm({
             <Toggle name="detect_tab_switch" checked={t.detect_tab_switch} onChange={(v) => setT({ ...t, detect_tab_switch: v })} label="Catat pindah tab / aplikasi" description="Muncul langsung di Monitoring" />
             <Toggle name="require_fullscreen" checked={t.require_fullscreen} onChange={(v) => setT({ ...t, require_fullscreen: v })} label="Wajib layar penuh" description="Keluar layar penuh tercatat (tidak berlaku di iPhone)" />
             <Toggle name="show_watermark" checked={t.show_watermark} onChange={(v) => setT({ ...t, show_watermark: v })} label="Tanda air nama siswa" description="Mencegah soal difoto & disebar" />
+            <Toggle name="integrity_alarm" checked={t.integrity_alarm} onChange={(v) => setT({ ...t, integrity_alarm: v })} label="Alarm suara & layar peringatan" description="Berbunyi saat siswa pindah tab, keluar layar penuh, split screen, atau menekan pintasan" />
             {exam && <p className="text-xs text-slate-500">Mode ujian otomatis menonaktifkan salin/tempel & klik kanan.</p>}
           </CardBody>
         </Card>
@@ -151,6 +156,11 @@ export function QuizSettingsForm({
           <CardBody className="space-y-3">
             <Toggle name="instant_feedback" checked={!exam && t.instant_feedback} disabled={exam} onChange={(v) => setT({ ...t, instant_feedback: v })} label="Umpan balik langsung" description="Siswa memeriksa tiap jawaban (lalu terkunci)" />
             <Toggle name="powerups_enabled" checked={!exam && t.powerups_enabled} disabled={exam} onChange={(v) => setT({ ...t, powerups_enabled: v })} label="Power-up positif" description="50:50, Petunjuk, Kesempatan Kedua — sekali pakai" />
+            <Field label="Bahasa soal" htmlFor="language" hint="Menentukan suara “Bacakan” — mis. English agar soal bahasa Inggris diucapkan dengan aksen Inggris.">
+              <Select id="language" name="language" defaultValue={initial?.language ?? "id"}>
+                {QUIZ_LANGUAGES.map((l) => <option key={l} value={l}>{QUIZ_LANGUAGE_LABEL[l]}</option>)}
+              </Select>
+            </Field>
             <Field label="Tema tampilan" htmlFor="theme">
               <Select id="theme" name="theme" defaultValue={initial?.theme ?? "default"}>
                 {QUIZ_THEMES.map((th) => <option key={th} value={th}>{QUIZ_THEME_LABEL[th]}</option>)}

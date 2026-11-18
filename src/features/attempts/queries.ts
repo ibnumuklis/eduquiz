@@ -9,8 +9,12 @@ export async function getAttemptReview(attemptId: string): Promise<ReviewPayload
   if (error || !data) return null;
   const review = data as ReviewPayload;
   if (review.items?.length) {
-    const urls = await signImages(supabase, review.items.map((i) => i.image_path));
-    review.items = review.items.map((i) => ({ ...i, image_url: i.image_path ? urls.get(i.image_path) ?? null : null }));
+    const urls = await signImages(supabase, review.items.flatMap((i) => [i.image_path, i.audio_path]));
+    review.items = review.items.map((i) => ({
+      ...i,
+      image_url: i.image_path ? urls.get(i.image_path) ?? null : null,
+      audio_url: i.audio_path ? urls.get(i.audio_path) ?? null : null,
+    }));
   }
   return review;
 }

@@ -27,6 +27,8 @@ const INTEGRITY_LABEL: Record<string, string> = {
   copy: "Mencoba menyalin",
   paste: "Mencoba menempel",
   context_menu: "Membuka menu klik kanan",
+  shortcut: "Menekan tombol pintasan (screenshot / dev tools / cetak)",
+  split_screen: "Membagi layar / mengecilkan jendela",
 };
 
 export function LiveMonitor({ quizId, initial, timezone }: { quizId: string; initial: MonitorRow[]; timezone: string }) {

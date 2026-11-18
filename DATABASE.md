@@ -95,3 +95,15 @@ Seluruh perhitungan berjalan di database. `_finalize_attempt` mengunci baris pen
 ## Status migrasi
 
 Semua migrasi diterapkan dan diuji otomatis pada PostgreSQL 16 dengan emulasi auth Supabase (`tests/db/supabase-shim.sql`). Penerapan ke Supabase Cloud: lihat DEPLOYMENT.md.
+
+## Fitur keterlibatan (migrasi `20261118100000_engagement_features`)
+
+| Objek | Keterangan |
+|---|---|
+| `quizzes.integrity_alarm`, `language`, `shared_with_school` | Alarm anti-curang, bahasa soal (untuk suara bacakan), berbagi ke bank soal sekolah |
+| `quiz_questions.data.audio_path`, `audio_max_plays` | Soal audio di bucket `quiz-media` (maks 10 MB, MP3/M4A/WAV/OGG/WEBM) |
+| `get_school_bank()` | Soal dari kuis guru lain yang dibagikan (staf satu sekolah saja) |
+| `get_class_mastery()` | Ketuntasan TP lintas kuis per kelas & rentang tanggal (guru pengampu/admin) |
+| `live_sessions`, `live_players`, `live_answers` | Mode Live; RLS hanya-baca, semua tulis lewat RPC `live_create/join/control/answer`, dibaca lewat `live_state` |
+
+`save_question`, `get_attempt`, `get_attempt_review` dibungkus (`_…_core` tidak bisa dipanggil klien) agar menambah bidang audio/bahasa tanpa menghapus fungsi lama.

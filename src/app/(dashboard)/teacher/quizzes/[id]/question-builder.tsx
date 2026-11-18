@@ -1,7 +1,8 @@
 "use client";
 import { useState, useTransition } from "react";
 import Link from "next/link";
-import { ArrowDown, ArrowUp, BookText, CheckCircle2, Copy, FileQuestion, FileSpreadsheet, ImageIcon, Lightbulb, Pencil, Plus, Printer, Target, Trash2 } from "lucide-react";
+import { MathText } from "@/components/quiz/math-text";
+import { ArrowDown, ArrowUp, BookText, CheckCircle2, Headphones, Copy, FileQuestion, FileSpreadsheet, ImageIcon, Lightbulb, Pencil, Plus, Printer, Target, Trash2 } from "lucide-react";
 import { toast } from "sonner";
 import { deleteQuestion, duplicateQuestion, reorderQuestions } from "@/features/quizzes/actions";
 import { QuestionEditor, type EditableQuestion } from "@/components/quiz/question-editor";
@@ -83,14 +84,15 @@ export function QuestionBuilder({
                       {q.objective_id && objectiveById.get(q.objective_id) && <Badge tone="green"><Target className="h-3 w-3" /> {objectiveById.get(q.objective_id)!.code}</Badge>}
                       {q.stimulus_id && stimById.get(q.stimulus_id) && <Badge tone="brand"><BookText className="h-3 w-3" /> {stimById.get(q.stimulus_id)!.title || "Stimulus"}</Badge>}
                       {q.payload?.hint && <Badge tone="amber"><Lightbulb className="h-3 w-3" /> Petunjuk</Badge>}
+                      {q.payload?.audio_path && <Badge tone="brand"><Headphones className="h-3 w-3" /> Audio</Badge>}
                     </div>
-                    <p className="mt-2 whitespace-pre-wrap text-sm font-medium text-slate-800">{q.prompt}</p>
+                    <p className="mt-2 whitespace-pre-wrap text-sm font-medium text-slate-800"><MathText text={q.prompt} /></p>
                     {CHOICE.has(q.type) && q.question_options.length > 0 ? (
                       <ul className="mt-3 grid gap-1.5 sm:grid-cols-2">
                         {q.question_options.map((o, k) => (
                           <li key={o.id} className={cn("flex items-center gap-2 rounded-lg px-2.5 py-1.5 text-sm", o.is_correct ? "bg-emerald-50 font-medium text-emerald-800" : "bg-slate-50 text-slate-600")}>
                             <span className="text-xs font-bold text-slate-400">{String.fromCharCode(65 + k)}</span>
-                            <span className="min-w-0 flex-1 truncate">{o.label}</span>
+                            <span className="min-w-0 flex-1 truncate"><MathText text={o.label} /></span>
                             {o.is_correct && <CheckCircle2 className="h-4 w-4 shrink-0 text-emerald-600" />}
                           </li>
                         ))}

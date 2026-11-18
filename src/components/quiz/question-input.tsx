@@ -3,6 +3,7 @@ import { ArrowDown, ArrowUp, CheckCircle2, Circle, GripVertical, Square, SquareC
 import { Input, Select, Textarea } from "@/components/ui/form";
 import { cn } from "@/lib/utils";
 import type { AttemptAnswer, AttemptQuestion } from "@/types";
+import { MathText } from "./math-text";
 
 export type Answer = AttemptAnswer;
 
@@ -38,7 +39,7 @@ export function QuestionInput({
         </div>
         {q.options.map((o, i) => (
           <div key={o.id} className="grid grid-cols-[1fr_auto] items-center gap-3 border-t border-slate-100 px-4 py-3">
-            <span className="text-sm text-slate-800 sm:text-base"><span className="mr-2 font-bold text-slate-400">{i + 1}.</span>{o.label}</span>
+            <span className="text-sm text-slate-800 sm:text-base"><span className="mr-2 font-bold text-slate-400">{i + 1}.</span><MathText text={o.label} /></span>
             <div className="flex w-36 overflow-hidden rounded-xl border border-slate-200 text-sm font-semibold" role="radiogroup" aria-label={`Pernyataan ${i + 1}`}>
               {[true, false].map((v) => (
                 <button key={String(v)} type="button" role="radio" aria-checked={data[o.id] === v} disabled={disabled}
@@ -67,7 +68,7 @@ export function QuestionInput({
       <div className="space-y-2.5">
         {q.options.map((o, i) => (
           <div key={o.id} className="grid items-center gap-2 rounded-2xl border border-slate-200 p-3 sm:grid-cols-[1fr_auto_1fr]">
-            <span className="text-sm font-medium text-slate-800 sm:text-base"><span className="mr-2 font-bold text-slate-400">{String.fromCharCode(65 + i)}.</span>{o.label}</span>
+            <span className="text-sm font-medium text-slate-800 sm:text-base"><span className="mr-2 font-bold text-slate-400">{String.fromCharCode(65 + i)}.</span><MathText text={o.label} /></span>
             <span className="hidden text-slate-300 sm:block" aria-hidden>⟷</span>
             <Select value={data[o.id] ?? ""} onChange={(e) => set(o.id, e.target.value)} disabled={disabled} aria-label={`Pasangan untuk ${o.label}`}
               className={cn(data[o.id] && "border-brand-300 bg-brand-50 font-medium text-brand-800")}>
@@ -98,7 +99,7 @@ export function QuestionInput({
             <li key={id} className={cn("flex items-center gap-3 rounded-2xl border-2 px-3 py-2.5 transition", isAnswered(a) ? "border-brand-200 bg-brand-50/50" : "border-slate-200")}>
               <GripVertical className="h-4 w-4 shrink-0 text-slate-300" aria-hidden />
               <span className="grid h-8 w-8 shrink-0 place-items-center rounded-xl bg-brand-600 text-sm font-bold text-white">{i + 1}</span>
-              <span className="flex-1 text-sm text-slate-800 sm:text-base">{byId.get(id)?.label}</span>
+              <span className="flex-1 text-sm text-slate-800 sm:text-base"><MathText text={byId.get(id)?.label} /></span>
               <button type="button" onClick={() => move(i, -1)} disabled={disabled || i === 0} className="rounded-lg p-2 text-slate-500 hover:bg-white disabled:opacity-30" aria-label={`Naikkan ${byId.get(id)?.label}`}><ArrowUp className="h-4 w-4" /></button>
               <button type="button" onClick={() => move(i, 1)} disabled={disabled || i === order.length - 1} className="rounded-lg p-2 text-slate-500 hover:bg-white disabled:opacity-30" aria-label={`Turunkan ${byId.get(id)?.label}`}><ArrowDown className="h-4 w-4" /></button>
             </li>
@@ -134,7 +135,7 @@ export function QuestionInput({
               <span className={cn("grid h-8 w-8 shrink-0 place-items-center rounded-xl text-xs font-bold", on ? "bg-brand-600 text-white" : "bg-slate-100 text-slate-500")}>
                 {String.fromCharCode(65 + i)}
               </span>
-              <span className="flex-1">{o.label}</span>
+              <span className="flex-1"><MathText text={o.label} /></span>
               <Icon className={cn("h-5 w-5 shrink-0", on ? "text-brand-600" : "text-slate-300")} aria-hidden />
             </button>
           );

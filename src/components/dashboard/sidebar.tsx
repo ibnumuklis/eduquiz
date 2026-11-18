@@ -3,24 +3,26 @@ import Link from "next/link";
 import { usePathname } from "next/navigation";
 import {
   Accessibility, Award, BarChart3, Target, BookOpen, Building2, ClipboardCheck, ClipboardList, GraduationCap, History, KeyRound,
-  LayoutDashboard, Library, Mail, ScrollText, Settings, Shield, Trophy, Users, UserSquare2, X,
+  FileBarChart2, LayoutDashboard, Library, Radio, Mail, ScrollText, Settings, Shield, Trophy, Users, UserSquare2, X,
 } from "lucide-react";
 import type { ComponentType } from "react";
 import type { LucideProps } from "lucide-react";
 import { Logo } from "./logo";
+import { Tip } from "@/components/ui/tooltip";
 import { cn } from "@/lib/utils";
 import type { AppRole } from "@/types";
 
-interface NavItem { href: string; label: string; icon: ComponentType<LucideProps>; exact?: boolean }
+interface NavItem { href: string; label: string; icon: ComponentType<LucideProps>; exact?: boolean; hint?: string }
 interface NavSection { title?: string; items: NavItem[] }
 
 const teacherTools: NavItem[] = [
-  { href: "/teacher/quizzes", label: "Kuis Saya", icon: ClipboardList },
-  { href: "/teacher/bank", label: "Bank Soal", icon: Library },
-  { href: "/teacher/grading", label: "Koreksi Jawaban", icon: ClipboardCheck },
-  { href: "/teacher/classes", label: "Kelas Saya", icon: GraduationCap },
-  { href: "/teacher/objectives", label: "TP / CP", icon: Target },
-  { href: "/teacher/accommodations", label: "Akomodasi Siswa", icon: Accessibility },
+  { href: "/teacher/quizzes", label: "Kuis Saya", icon: ClipboardList, hint: "Buat, atur, publikasikan, dan pantau kuis. Termasuk mode Live, impor Excel, dan cetak PDF." },
+  { href: "/teacher/bank", label: "Bank Soal", icon: Library, hint: "Kumpulan soal Anda dan soal yang dibagikan guru lain di sekolah. Salin ke kuis mana pun." },
+  { href: "/teacher/grading", label: "Koreksi Jawaban", icon: ClipboardCheck, hint: "Nilai jawaban uraian & isian yang perlu dikoreksi manual, dengan rubrik dan umpan balik." },
+  { href: "/teacher/classes", label: "Kelas Saya", icon: GraduationCap, hint: "Daftar kelas dan siswa yang Anda ajar." },
+  { href: "/teacher/reports", label: "Rapor TP", icon: FileBarChart2, hint: "Rekap ketuntasan per Tujuan Pembelajaran lintas kuis dalam satu semester + draf deskripsi rapor (PDF/Excel)." },
+  { href: "/teacher/objectives", label: "TP / CP", icon: Target, hint: "Daftar Tujuan Pembelajaran Kurikulum Merdeka. Tautkan ke soal untuk laporan ketuntasan." },
+  { href: "/teacher/accommodations", label: "Akomodasi Siswa", icon: Accessibility, hint: "Waktu tambahan, kurangi opsi, dan bacakan soal untuk siswa yang membutuhkan." },
 ];
 
 function sectionsFor(role: AppRole | null, isSuperAdmin: boolean): NavSection[] {
@@ -28,14 +30,14 @@ function sectionsFor(role: AppRole | null, isSuperAdmin: boolean): NavSection[] 
   if (role === "school_admin") {
     sections.push({
       items: [
-        { href: "/school", label: "Dasbor Sekolah", icon: LayoutDashboard, exact: true },
-        { href: "/school/teachers", label: "Guru & Staf", icon: UserSquare2 },
-        { href: "/school/students", label: "Siswa", icon: Users },
-        { href: "/school/classes", label: "Kelas", icon: GraduationCap },
-        { href: "/school/subjects", label: "Mata Pelajaran", icon: BookOpen },
-        { href: "/school/invitations", label: "Undangan", icon: Mail },
-        { href: "/school/activity", label: "Aktivitas", icon: ScrollText },
-        { href: "/school/settings", label: "Pengaturan Sekolah", icon: Settings },
+        { href: "/school", label: "Dasbor Sekolah", icon: LayoutDashboard, exact: true, hint: "Ringkasan statistik sekolah: siswa, guru, kuis, dan aktivitas." },
+        { href: "/school/teachers", label: "Guru & Staf", icon: UserSquare2, hint: "Kelola guru, peran, status, dan penugasan mengajar." },
+        { href: "/school/students", label: "Siswa", icon: Users, hint: "Daftar siswa sekolah, NIS, dan kelasnya." },
+        { href: "/school/classes", label: "Kelas", icon: GraduationCap, hint: "Buat kelas dan atur anggotanya." },
+        { href: "/school/subjects", label: "Mata Pelajaran", icon: BookOpen, hint: "Daftar mata pelajaran sekolah." },
+        { href: "/school/invitations", label: "Undangan", icon: Mail, hint: "Undang guru & siswa lewat kode atau impor CSV." },
+        { href: "/school/activity", label: "Aktivitas", icon: ScrollText, hint: "Jejak audit: siapa melakukan apa dan kapan." },
+        { href: "/school/settings", label: "Pengaturan Sekolah", icon: Settings, hint: "Profil sekolah, tahun ajaran, dan privasi leaderboard." },
       ],
     });
     sections.push({ title: "Mengajar", items: [{ href: "/teacher", label: "Dasbor Guru", icon: BarChart3, exact: true }, ...teacherTools] });
@@ -44,12 +46,13 @@ function sectionsFor(role: AppRole | null, isSuperAdmin: boolean): NavSection[] 
   } else if (role === "student") {
     sections.push({
       items: [
-        { href: "/student", label: "Dasbor", icon: LayoutDashboard, exact: true },
-        { href: "/student/quizzes", label: "Kuis", icon: ClipboardList },
-        { href: "/student/join", label: "Gabung dengan Kode", icon: KeyRound },
-        { href: "/student/history", label: "Riwayat Nilai", icon: History },
-        { href: "/student/achievements", label: "Pencapaian", icon: Award },
-        { href: "/student/leaderboard", label: "Leaderboard", icon: Trophy },
+        { href: "/student", label: "Dasbor", icon: LayoutDashboard, exact: true, hint: "Ringkasan XP, level, streak, dan kuis terbaru." },
+        { href: "/student/quizzes", label: "Kuis", icon: ClipboardList, hint: "Kuis yang ditugaskan kepadamu." },
+        { href: "/student/live", label: "Gabung Live", icon: Radio, hint: "Ikuti kuis Live bersama kelas dengan kode 6 angka dari guru." },
+        { href: "/student/join", label: "Gabung dengan Kode", icon: KeyRound, hint: "Masuk ke kuis memakai kode akses dari guru." },
+        { href: "/student/history", label: "Riwayat Nilai", icon: History, hint: "Semua nilai dan pembahasan kuis yang sudah kamu kerjakan." },
+        { href: "/student/achievements", label: "Pencapaian", icon: Award, hint: "Badge yang sudah dan belum kamu raih." },
+        { href: "/student/leaderboard", label: "Leaderboard", icon: Trophy, hint: "Peringkat XP di sekolah atau kelasmu." },
       ],
     });
   }
@@ -110,6 +113,7 @@ export function Sidebar({
                   const active = isActive(item);
                   return (
                     <li key={item.href}>
+                      <Tip content={item.hint} side="right">
                       <Link
                         href={item.href}
                         onClick={onClose}
@@ -122,6 +126,7 @@ export function Sidebar({
                         <item.icon className={cn("h-[18px] w-[18px]", active ? "text-white" : "text-slate-400 group-hover:text-brand-600")} />
                         {item.label}
                       </Link>
+                      </Tip>
                     </li>
                   );
                 })}
@@ -131,7 +136,7 @@ export function Sidebar({
         </nav>
         <div className="m-3 rounded-2xl bg-gradient-to-br from-brand-50 to-accent-50 p-4">
           <p className="text-sm font-semibold text-brand-800">Learn. Play. Achieve.</p>
-          <p className="mt-1 text-xs text-slate-600">Butuh bantuan? Lihat panduan pengguna di menu Profil.</p>
+          <p className="mt-1 text-xs text-slate-600">Arahkan kursor ke menu atau tombol untuk melihat keterangannya. Panduan lengkap ada di menu Profil.</p>
         </div>
       </aside>
     </>

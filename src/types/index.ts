@@ -8,9 +8,10 @@ export type QuestionType =
 export type QuizMode = "standard" | "practice" | "exam";
 export type QuizTheme = "default" | "batik" | "nusantara" | "angkasa" | "laut" | "hutan";
 export type PowerupKind = "fifty_fifty" | "hint" | "second_chance";
-export type IntegrityKind = "tab_hidden" | "window_blur" | "fullscreen_exit" | "copy" | "paste" | "context_menu";
+export type IntegrityKind = "tab_hidden" | "window_blur" | "fullscreen_exit" | "copy" | "paste" | "context_menu" | "shortcut" | "split_screen";
+export type QuizLanguage = "id" | "en" | "ar" | "ja" | "ko" | "zh" | "fr" | "de";
 export interface RubricItem { criterion: string; points: number }
-export interface QuestionPayload { hint?: string; rubric?: RubricItem[] }
+export interface QuestionPayload { hint?: string; rubric?: RubricItem[]; audio_path?: string; audio_max_plays?: number }
 export type AttemptStatus = "in_progress" | "submitted";
 export type MonitorStatus = "not_started" | "in_progress" | "completed" | "late" | "missed";
 
@@ -86,6 +87,9 @@ export interface Quiz {
   powerups_enabled: boolean;
   instant_feedback: boolean;
   theme: QuizTheme;
+  integrity_alarm: boolean;
+  language: QuizLanguage;
+  shared_with_school: boolean;
 }
 
 export interface QuestionOption {
@@ -131,6 +135,9 @@ export interface AttemptQuestion {
   has_hint?: boolean;
   hint?: string | null;
   right_choices?: string[] | null;
+  audio_path?: string | null;
+  audio_url?: string | null;
+  audio_max_plays?: number;
 }
 
 export interface AttemptAnswer {
@@ -160,6 +167,7 @@ export interface AttemptPayload {
     id: string; title: string; description: string | null; duration_minutes: number; show_result: boolean;
     mode?: QuizMode; require_fullscreen?: boolean; detect_tab_switch?: boolean; show_watermark?: boolean;
     powerups_enabled?: boolean; instant_feedback?: boolean; theme?: QuizTheme;
+    language?: QuizLanguage; integrity_alarm?: boolean;
   };
   student?: { full_name: string | null; student_number: string | null; read_aloud: boolean };
   server_now: string;
@@ -179,6 +187,8 @@ export interface ReviewItem {
   rubric?: RubricItem[] | null;
   stimulus?: { title: string | null; content: string; image_path: string | null } | null;
   objective?: { code: string; description: string } | null;
+  audio_path?: string | null;
+  audio_url?: string | null;
   options: { id: string; label: string; is_correct: boolean | null; match_text?: string | null }[];
   answer: {
     selected_option_ids: string[];
@@ -217,7 +227,7 @@ export interface QuizResult {
 export interface ReviewPayload {
   visible: boolean;
   show_keys?: boolean;
-  quiz: { id: string; title: string; passing_grade?: number; mode?: QuizMode; mastery_target?: number };
+  quiz: { id: string; title: string; passing_grade?: number; mode?: QuizMode; mastery_target?: number; language?: QuizLanguage };
   attempt: {
     id: string; started_at?: string; submitted_at: string | null; attempt_number?: number; auto_submitted?: boolean; is_late?: boolean;
     is_remedial?: boolean; integrity_count?: number; powerups_used?: PowerupKind[];

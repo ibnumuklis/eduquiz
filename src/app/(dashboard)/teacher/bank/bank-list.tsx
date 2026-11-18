@@ -9,6 +9,7 @@ import { Select } from "@/components/ui/form";
 import { QUESTION_TYPE_LABEL } from "@/lib/validations/quiz";
 import { formatScore } from "@/lib/utils";
 import { keySummary } from "@/lib/utils/quiz";
+import { MathText } from "@/components/quiz/math-text";
 import type { QuestionType } from "@/types";
 
 export interface BankQuestion {
@@ -19,6 +20,8 @@ export interface BankQuestion {
   accepted_answers: string[];
   question_options: { label: string; is_correct: boolean; match_text?: string | null; position: number }[];
   quiz: { id: string; title: string; subject: { name: string } | null };
+  owner?: string | null;
+  objective?: string | null;
 }
 
 export function BankList({ questions, quizzes }: { questions: BankQuestion[]; quizzes: { id: string; title: string; status: string }[] }) {
@@ -52,9 +55,10 @@ export function BankList({ questions, quizzes }: { questions: BankQuestion[]; qu
                 <div className="flex flex-wrap items-center gap-2">
                   <Badge tone="violet">{QUESTION_TYPE_LABEL[q.type]}</Badge>
                   <Badge>{formatScore(q.points)} poin</Badge>
-                  <span className="text-xs text-slate-500">{q.quiz.subject?.name ?? "Tanpa mapel"} · {q.quiz.title}</span>
+                  <span className="text-xs text-slate-500">{q.quiz.subject?.name ?? "Tanpa mapel"} · {q.quiz.title}{q.owner ? ` · oleh ${q.owner}` : ""}</span>
+                  {q.objective && <Badge tone="green">{q.objective}</Badge>}
                 </div>
-                <p className="mt-1.5 line-clamp-2 text-sm font-medium text-slate-800">{q.prompt}</p>
+                <p className="mt-1.5 line-clamp-2 text-sm font-medium text-slate-800"><MathText text={q.prompt} /></p>
                 <p className="mt-1 truncate text-xs text-emerald-700">
                   Kunci: {keySummary(q.type, q.question_options, q.accepted_answers)}
                 </p>

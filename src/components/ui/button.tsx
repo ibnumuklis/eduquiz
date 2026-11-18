@@ -1,6 +1,7 @@
 import { forwardRef, type ButtonHTMLAttributes } from "react";
 import { Loader2 } from "lucide-react";
 import { cn } from "@/lib/utils";
+import { Tip } from "./tooltip";
 
 type Variant = "primary" | "secondary" | "outline" | "ghost" | "danger" | "accent";
 type Size = "sm" | "md" | "lg" | "icon";
@@ -24,6 +25,8 @@ export interface ButtonProps extends ButtonHTMLAttributes<HTMLButtonElement> {
   variant?: Variant;
   size?: Size;
   loading?: boolean;
+  /** Short explanation shown on hover/focus. Also used as aria-label for icon-only buttons. */
+  tooltip?: string;
 }
 
 export const buttonClass = (variant: Variant = "primary", size: Size = "md", className?: string) =>
@@ -35,13 +38,15 @@ export const buttonClass = (variant: Variant = "primary", size: Size = "md", cla
   );
 
 export const Button = forwardRef<HTMLButtonElement, ButtonProps>(function Button(
-  { variant = "primary", size = "md", loading, disabled, className, children, type = "button", ...props },
+  { variant = "primary", size = "md", loading, disabled, className, children, type = "button", tooltip, ...props },
   ref,
 ) {
-  return (
-    <button ref={ref} type={type} disabled={disabled || loading} className={buttonClass(variant, size, className)} {...props}>
+  const btn = (
+    <button ref={ref} type={type} disabled={disabled || loading} className={buttonClass(variant, size, className)}
+      aria-label={props["aria-label"] ?? (size === "icon" ? tooltip : undefined)} {...props}>
       {loading && <Loader2 className="h-4 w-4 animate-spin" aria-hidden />}
       {children}
     </button>
   );
+  return tooltip ? <Tip content={tooltip}>{btn}</Tip> : btn;
 });

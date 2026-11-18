@@ -10,6 +10,8 @@ import { ResultSummary } from "@/components/quiz/result-summary";
 import { ReviewList } from "@/components/quiz/review-list";
 import { buttonClass } from "@/components/ui/button";
 import { formatDateTime } from "@/lib/utils";
+import { PdfButton } from "@/components/pdf-button";
+import { buildResultPdf } from "@/lib/pdf/result";
 
 export const metadata: Metadata = { title: "Hasil Kuis" };
 
@@ -34,7 +36,7 @@ export default async function StudentResultPage({ params }: { params: Promise<{ 
         back={back}
         title={review.quiz.title}
         description={`Percobaan ke-${review.attempt.attempt_number} · dikumpulkan ${formatDateTime(review.attempt.submitted_at, session.timezone)}${review.attempt.auto_submitted ? " (otomatis saat waktu habis)" : ""}${review.attempt.is_remedial ? " · latihan ulang" : ""}`}
-        actions={<Link href="/student/quizzes" className={buttonClass("outline")}>Kuis lainnya</Link>}
+        actions={<div className="flex gap-2"><PdfButton spec={buildResultPdf(review, { school: session.activeMembership?.school.name, student: session.profile.full_name ?? undefined })} label="Unduh PDF" /><Link href="/student/quizzes" className={buttonClass("outline")}>Kuis lainnya</Link></div>}
       />
       <ResultSummary result={review.result} passingGrade={review.quiz.passing_grade} mode={review.quiz.mode} masteryTarget={review.quiz.mastery_target} />
       {review.can_practice_again && (

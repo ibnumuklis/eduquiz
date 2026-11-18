@@ -11,6 +11,8 @@ import { DistributionChart } from "@/components/charts/charts";
 import { buttonClass } from "@/components/ui/button";
 import { Table, TD, TH, THead, TR } from "@/components/ui/table";
 import { formatDateTime, formatDuration, formatScore } from "@/lib/utils";
+import { PdfButton } from "@/components/pdf-button";
+import { safeFilename, type PdfSpec } from "@/lib/pdf/report";
 
 export const metadata: Metadata = { title: "Laporan Nilai" };
 
@@ -27,6 +29,20 @@ export default async function ResultsPage({ params, searchParams }: { params: Pr
   const ranked = rankStudents(rows);
   const stats = summarize(ranked.map((r) => r.score), Number(quiz.passing_grade));
   const base = `/teacher/quizzes/${id}/results`;
+  const pdf: PdfSpec = {
+    filename: `laporan-nilai-${safeFilename(quiz.title)}${classFilter ? `-${safeFilename(classFilter)}` : ""}`,
+    title: `Laporan Nilai — ${quiz.title}`,
+    subtitle: classFilter ? `Kelas ${classFilter}` : "Semua kelas",
+    school: session.activeMembership?.school.name,
+    meta: [["Siswa", String(stats.count)], ["Rata-rata", formatScore(stats.average)], ["Tertinggi / terendah", `${formatScore(stats.highest)} / ${formatScore(stats.lowest)}`],
+      ["Ketuntasan", `${stats.passRate ?? 0}% (KKM ${formatScore(quiz.passing_grade)})`]],
+    sections: [{
+      heading: "Ranking (nilai terbaik per siswa)",
+      head: ["#", "Nama", "Kelas", "Percobaan", "Benar/Salah/Kosong", "Durasi", "Nilai", "Status"],
+      body: ranked.map((r) => [r.rank, r.student_name, r.class_name, r.attempts, `${r.correct_count}/${r.wrong_count}/${r.unanswered_count}`,
+        formatDuration(r.duration_seconds), formatScore(r.score), r.pending_manual > 0 ? "Menunggu koreksi" : r.score >= Number(quiz.passing_grade) ? "Tuntas" : "Belum tuntas"]),
+    }],
+  };
   const qs = (p: Record<string, string>) => `${base}?${new URLSearchParams({ ...(classFilter ? { class: classFilter } : {}), view, ...p })}`;
 
   return (
@@ -39,6 +55,7 @@ export default async function ResultsPage({ params, searchParams }: { params: Pr
           ))}
         </div>
         <div className="flex gap-2">
+          <PdfButton spec={pdf} size="sm" label="PDF" />
           <a href={`/api/reports/${id}?format=csv`} className={buttonClass("outline", "sm")}><Download className="h-4 w-4" /> CSV</a>
           <a href={`/api/reports/${id}?format=xlsx`} className={buttonClass("primary", "sm")}><FileSpreadsheet className="h-4 w-4" /> Excel</a>
         </div>

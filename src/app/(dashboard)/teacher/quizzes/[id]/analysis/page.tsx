@@ -11,13 +11,15 @@ import {
 } from "@/lib/utils/analysis";
 import { cn, formatScore } from "@/lib/utils";
 import { CopyButton } from "./copy-button";
+import { PdfButton } from "@/components/pdf-button";
+import { safeFilename, type PdfSpec } from "@/lib/pdf/report";
 
 export const metadata: Metadata = { title: "Analisis Kuis" };
 
 const CHOICE = new Set(["multiple_choice", "multiple_select", "true_false"]);
 
 export default async function AnalysisPage({ params }: { params: Promise<{ id: string }> }) {
-  await requireSchoolRole("teacher");
+  const session = await requireSchoolRole("teacher");
   const { id } = await params;
   const quiz = await getManagedQuiz(id);
   const supabase = await createClient();
@@ -34,11 +36,43 @@ export default async function AnalysisPage({ params }: { params: Promise<{ id: s
     const vals = a.students.map((s) => masteryByStudent.get(s.student_id)?.[objId]).filter((v): v is number => typeof v === "number");
     return vals.length ? Math.round(vals.reduce((x, y) => x + y, 0) / vals.length) : null;
   };
+  const pdf: PdfSpec = {
+    filename: `analisis-${safeFilename(quiz.title)}`,
+    title: `Analisis Kuis — ${quiz.title}`,
+    school: session.activeMembership?.school.name,
+    landscape: a.objectives.length > 5,
+    meta: [["Siswa", String(a.students.length)], ["Soal dinilai", String(scored.length)], ["Batas tuntas", `${formatScore(threshold)}%`]],
+    sections: [
+      {
+        heading: "Analisis butir soal",
+        note: "p = tingkat kesukaran (≥0,70 mudah; 0,30–0,69 sedang; <0,30 sukar). D = daya beda kelompok atas–bawah 27% (≥0,40 sangat baik; 0,20–0,39 cukup; <0,20 perlu revisi).",
+        head: ["No", "Tipe", "TP", "Soal", "p", "Kesukaran", "D", "Daya beda"],
+        body: scored.map((q) => {
+          const d = discriminationIndex(a.students, q.id);
+          return [q.no, QUESTION_TYPE_LABEL[q.type as QuestionTypeValue] ?? q.type, a.objectives.find((o) => o.id === q.objective_id)?.code ?? "—",
+            q.prompt.slice(0, 90), q.p_value === null ? "—" : Number(q.p_value).toFixed(2), difficultyLabel(q.p_value).label,
+            d === null ? "—" : d.toFixed(2), discriminationLabel(d).label];
+        }),
+        columnWidths: [10, 28, 16, "auto", 12, 18, 12, 22],
+      },
+      ...(a.objectives.length ? [{
+        heading: "Ketuntasan per Tujuan Pembelajaran (%)",
+        note: a.objectives.map((o) => `${o.code}: ${o.description}`).join(" · "),
+        head: ["Nama", ...a.objectives.map((o) => o.code)],
+        body: [...a.students.map((s) => { const m = masteryByStudent.get(s.student_id) ?? {}; return [s.name, ...a.objectives.map((o) => m[o.id] ?? null)]; }),
+          ["Rata-rata kelas", ...a.objectives.map((o) => classAvg(o.id))]],
+      }, {
+        heading: "Draf deskripsi capaian (rapor)",
+        items: a.students.map((s) => ({ title: `${s.name}${s.student_number ? ` (NIS ${s.student_number})` : ""}`, text: raporDescription(s.name, masteryByStudent.get(s.student_id) ?? {}, a.objectives, threshold) })),
+      }] : []),
+    ],
+  };
   const hardest = [...scored].filter((q) => q.p_value !== null).sort((x, y) => Number(x.p_value) - Number(y.p_value))[0];
 
   return (
     <div className="space-y-6">
-      <nav className="flex flex-wrap gap-2 text-sm">
+      <nav className="flex flex-wrap items-center gap-2 text-sm">
+        <span className="ml-auto order-last"><PdfButton spec={pdf} size="sm" label="Unduh PDF analisis" /></span>
         {[["#heatmap", "Heatmap"], ["#butir", "Analisis butir"], ["#tp", "Ketuntasan TP"], ["#rapor", "Draf rapor"], ...(surveys.length ? [["#survei", "Survei & jawaban"]] : [])].map(([href, label]) => (
           <a key={href} href={href} className="rounded-full border border-slate-200 bg-white px-3 py-1.5 font-medium text-slate-600 hover:border-brand-300 hover:text-brand-700">{label}</a>
         ))}

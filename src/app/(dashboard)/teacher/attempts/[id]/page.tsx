@@ -9,6 +9,8 @@ import { PageHeader } from "@/components/ui/feedback";
 import { ResultSummary } from "@/components/quiz/result-summary";
 import { ReviewList } from "@/components/quiz/review-list";
 import { formatDateTime } from "@/lib/utils";
+import { PdfButton } from "@/components/pdf-button";
+import { buildResultPdf } from "@/lib/pdf/result";
 
 export const metadata: Metadata = { title: "Hasil Siswa" };
 
@@ -27,6 +29,7 @@ export default async function TeacherAttemptPage({ params }: { params: Promise<{
         back={<Link href={`/teacher/quizzes/${review.quiz.id}/results`} className="mb-2 inline-flex items-center gap-1 text-sm text-slate-500 hover:text-brand-600"><ArrowLeft className="h-4 w-4" /> Laporan nilai</Link>}
         title={student?.full_name ?? "Siswa"}
         description={`${review.quiz.title} · percobaan ke-${review.attempt.attempt_number} · dikumpulkan ${formatDateTime(review.attempt.submitted_at, session.timezone)}${review.attempt.auto_submitted ? " (otomatis)" : ""}`}
+        actions={<PdfButton spec={buildResultPdf(review, { school: session.activeMembership?.school.name, student: student?.full_name })} label="Unduh PDF" />}
       />
       <ResultSummary result={review.result} passingGrade={review.quiz.passing_grade} mode={review.quiz.mode} masteryTarget={review.quiz.mastery_target} />
       {(review.attempt.integrity_count ?? 0) > 0 && <p className="mt-3 text-sm text-amber-700">Tercatat {review.attempt.integrity_count} kejadian integritas (pindah tab / keluar layar penuh / salin-tempel) selama pengerjaan.</p>}
