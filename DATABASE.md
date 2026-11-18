@@ -96,7 +96,7 @@ Seluruh perhitungan berjalan di database. `_finalize_attempt` mengunci baris pen
 
 Semua migrasi diterapkan dan diuji otomatis pada PostgreSQL 16 dengan emulasi auth Supabase (`tests/db/supabase-shim.sql`). Penerapan ke Supabase Cloud: lihat DEPLOYMENT.md.
 
-## Fitur keterlibatan (migrasi `20261118100000_engagement_features`)
+## Fitur keterlibatan (migrasi `20261118100111_engagement_features`)
 
 | Objek | Keterangan |
 |---|---|
