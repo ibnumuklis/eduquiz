@@ -158,3 +158,9 @@ html, body { overflow-x: clip; max-width: 100%; }
   .eq-stack td[colspan] { flex-basis: 100%; justify-content: center; text-align: center; }
   .eq-stack td[colspan]::before { display: none; }
 }
+
+/* Grid items may shrink below their content width, so long titles truncate instead of
+   pushing cards off-screen on phones (CSS grid items default to min-width: auto). */
+@layer base {
+  .grid > * { min-width: 0; }
+}

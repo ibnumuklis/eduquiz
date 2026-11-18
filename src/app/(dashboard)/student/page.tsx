@@ -91,8 +91,8 @@ export default async function StudentDashboard() {
               {((results ?? []) as unknown as { attempt_id: string; score: number; passed: boolean; created_at: string; quiz: { title: string } }[]).map((r) => (
                 <li key={r.attempt_id}>
                   <Link href={`/student/results/${r.attempt_id}`} className="flex items-center justify-between gap-3 px-5 py-3 hover:bg-slate-50">
-                    <div className="min-w-0"><p className="truncate text-sm font-medium text-slate-800">{r.quiz?.title}</p><p className="text-xs text-slate-500">{formatRelative(r.created_at)}</p></div>
-                    <Badge tone={r.passed ? "green" : "red"}>{formatScore(r.score)}</Badge>
+                    <div className="min-w-0"><p className="line-clamp-2 text-sm font-medium text-slate-800">{r.quiz?.title}</p><p className="text-xs text-slate-500">{formatRelative(r.created_at)}</p></div>
+                    <Badge tone={r.passed ? "green" : "red"} className="shrink-0">{formatScore(r.score)}</Badge>
                   </Link>
                 </li>
               ))}
