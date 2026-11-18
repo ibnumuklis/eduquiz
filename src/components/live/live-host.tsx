@@ -1,9 +1,9 @@
 "use client";
 import { useCallback, useEffect, useRef, useState } from "react";
 import Link from "next/link";
-import { ArrowLeft, Check, ChevronRight, Copy, Eye, Maximize, Minimize, Square, Users, Wifi, WifiOff } from "lucide-react";
+import { ArrowLeft, BookOpen, Check, ChevronRight, Copy, Eye, Hand, Maximize, Minimize, Pause, Play, Square, Users, Wifi, WifiOff } from "lucide-react";
 import { toast } from "sonner";
-import type { LiveState } from "@/features/live/actions";
+import type { LiveAnswerMode, LiveState } from "@/features/live/actions";
 import { dbErrorMessage } from "@/lib/utils/errors";
 import { MathText } from "@/components/quiz/math-text";
 import { Tip } from "@/components/ui/tooltip";
@@ -16,7 +16,7 @@ import { Leaderboard, LiveShell, Podium, TimerRing } from "./live-shared";
 
 export function LiveHost({ initial }: { initial: LiveState }) {
   const { supabase, state, setState, refresh, ping, connected, serverNow } = useLive(initial.session.id, initial);
-  const left = useCountdown(state, serverNow);
+  const { phase, left, readLeft } = useCountdown(state, serverNow);
   const [pending, setPending] = useState(false);
   const [full, setFull] = useState(false);
   const [autoRead, setAutoRead] = useState(false);
@@ -33,28 +33,39 @@ export function LiveHost({ initial }: { initial: LiveState }) {
   const q = state.question;
   const answered = q?.answered ?? 0;
 
-  const act = useCallback(async (action: "next" | "reveal" | "end") => {
+  const act = useCallback(async (action: "next" | "reveal" | "end" | "open" | "pause" | "resume") => {
     setPending(true);
     // Instant feedback on the projector while the server confirms.
-    if (action === "reveal") setState((st) => ({ ...st, session: { ...st.session, status: "reveal" } }));
+    if (action === "reveal") setState((st) => ({ ...st, session: { ...st.session, status: "reveal", paused: false } }));
     if (action === "end") setState((st) => ({ ...st, session: { ...st.session, status: "ended" } }));
+    if (action === "open") setState((st) => ({ ...st, session: { ...st.session, question_started_at: new Date(serverNow()).toISOString() } }));
     const { error } = await supabase.rpc("live_control", { p_session: s.id, p_action: action });
     if (error) toast.error(dbErrorMessage(error));
     ping();          // players refresh immediately
     await refresh(); // and so do we
     setPending(false);
-  }, [supabase, s.id, setState, ping, refresh]);
+  }, [supabase, s.id, setState, ping, refresh, serverNow]);
+
+  const configure = useCallback(async (mode: LiveAnswerMode, read: number) => {
+    setState((st) => ({ ...st, session: { ...st.session, answer_mode: mode, read_seconds: read } }));
+    const { error } = await supabase.rpc("live_configure", { p_session: s.id, p_mode: mode, p_read_seconds: read });
+    if (error) toast.error(dbErrorMessage(error));
+    refresh();
+  }, [supabase, s.id, setState, refresh]);
+  const mode: LiveAnswerMode = s.answer_mode ?? "auto";
+  const readSeconds = s.read_seconds ?? 0;
 
   // Tampilkan jawaban otomatis saat waktu habis atau semua peserta sudah menjawab.
   useEffect(() => {
     if (s.status !== "question" || !q) return;
     const key = `${s.current_index}`;
     if (autoRevealed.current === key) return;
+    if (phase !== "running") return;
     if (left === 0 || (state.players_count > 0 && answered >= state.players_count)) {
       autoRevealed.current = key;
       setTimeout(() => act("reveal"), 300); // short beat so the last answer lands on screen
     }
-  }, [left, answered, s.status, s.current_index, q, state.players_count, act]);
+  }, [phase, left, answered, s.status, s.current_index, q, state.players_count, act]);
 
   useEffect(() => {
     const on = () => setFull(!!document.fullscreenElement);
@@ -114,6 +125,26 @@ export function LiveHost({ initial }: { initial: LiveState }) {
               ))}
               {!state.players?.length && <p className="text-white/60">Menunggu siswa bergabung…</p>}
             </div>
+            <div className="mt-8 flex flex-wrap items-center justify-center gap-2 text-sm">
+              <span className="text-white/60">Mulai menjawab:</span>
+              <div className="inline-flex rounded-xl bg-white/10 p-1">
+                {(["auto", "manual"] as const).map((m) => (
+                  <button key={m} type="button" onClick={() => configure(m, readSeconds)}
+                    className={cn("rounded-lg px-3 py-1.5 font-semibold transition", mode === m ? "bg-white text-indigo-900" : "text-white/70 hover:text-white")}>
+                    {m === "auto" ? "Otomatis" : "Manual (guru)"}
+                  </button>
+                ))}
+              </div>
+              {mode === "auto" && (
+                <label className="inline-flex items-center gap-2 text-white/60">
+                  waktu membaca
+                  <select value={readSeconds} onChange={(e) => configure(mode, Number(e.target.value))}
+                    className="rounded-lg border-0 bg-white/10 px-2 py-1.5 font-semibold text-white [&>option]:text-slate-900">
+                    {[0, 3, 5, 10, 15, 20, 30].map((n) => <option key={n} value={n}>{n ? `${n} detik` : "tanpa jeda"}</option>)}
+                  </select>
+                </label>
+              )}
+            </div>
             <button disabled={pending || state.players_count === 0} onClick={() => act("next")}
               className="mt-10 flex items-center gap-2 rounded-2xl bg-emerald-500 px-10 py-4 text-xl font-bold shadow-lg shadow-emerald-500/30 hover:bg-emerald-400 disabled:opacity-50">
               Mulai <ChevronRight className="h-6 w-6" />
@@ -147,13 +178,35 @@ export function LiveHost({ initial }: { initial: LiveState }) {
                 )}
               </div>
               <div className="flex flex-col items-center gap-3">
-                {s.status === "question" && left !== null && <TimerRing left={left} total={s.question_seconds} size={104} />}
+                {phase === "running" && left !== null && <TimerRing left={left} total={s.question_seconds} size={104} />}
+                {phase === "paused" && left !== null && (
+                  <div className="relative"><TimerRing left={left} total={s.question_seconds} size={104} />
+                    <span className="absolute -bottom-2 left-1/2 -translate-x-1/2 rounded-full bg-amber-400 px-2 py-0.5 text-[11px] font-bold text-slate-900">JEDA</span></div>
+                )}
+                {phase === "reading" && readLeft !== null && (
+                  <div className="relative"><TimerRing left={readLeft} total={Math.max(1, readSeconds)} size={104} />
+                    <span className="absolute -bottom-2 left-1/2 -translate-x-1/2 rounded-full bg-sky-400 px-2 py-0.5 text-[11px] font-bold text-slate-900">BACA</span></div>
+                )}
+                {phase === "waiting" && (
+                  <div className="grid h-[104px] w-[104px] place-items-center rounded-full bg-white/10 text-center text-xs font-semibold text-white/80">
+                    <span><BookOpen className="mx-auto mb-1 h-7 w-7" />Baca soal</span>
+                  </div>
+                )}
                 <div className="rounded-2xl bg-white/10 px-4 py-2 text-center">
                   <p className="text-3xl font-black tabular-nums">{answered}</p>
                   <p className="text-xs text-white/70">menjawab</p>
                 </div>
               </div>
             </div>
+
+            {(phase === "waiting" || phase === "reading" || phase === "paused") && (
+              <div className={cn("flex items-center justify-center gap-2 rounded-2xl px-4 py-2 text-center font-semibold",
+                phase === "paused" ? "bg-amber-400/20 text-amber-100" : "bg-sky-400/20 text-sky-100")}>
+                {phase === "paused" ? <><Pause className="h-5 w-5" /> Dijeda — siswa belum bisa menjawab</>
+                  : phase === "reading" ? <><BookOpen className="h-5 w-5" /> Waktu membaca — menjawab dibuka dalam {readLeft} detik</>
+                  : <><Hand className="h-5 w-5" /> Bacakan soal dulu, lalu tekan “Mulai menjawab”</>}
+              </div>
+            )}
 
             {TEXT_TYPES.has(q.type) ? (
               <div className="flex flex-1 flex-wrap content-start items-center justify-center gap-3 rounded-3xl bg-white/5 p-6">
@@ -196,8 +249,30 @@ export function LiveHost({ initial }: { initial: LiveState }) {
               </div>
             )}
 
-            <div className="mt-auto flex justify-end gap-3">
-              {s.status === "question" && (
+            <div className="mt-auto flex flex-wrap justify-end gap-3">
+              {(phase === "waiting" || phase === "reading") && (
+                <>
+                  {phase === "reading" && (
+                    <button disabled={pending} onClick={() => act("pause")} className="flex items-center gap-2 rounded-2xl bg-white/15 px-5 py-3 font-bold hover:bg-white/25 disabled:opacity-50">
+                      <Hand className="h-5 w-5" /> Tahan
+                    </button>
+                  )}
+                  <button disabled={pending} onClick={() => act("open")} className="flex items-center gap-2 rounded-2xl bg-emerald-500 px-8 py-3 text-lg font-bold hover:bg-emerald-400 disabled:opacity-50">
+                    <Play className="h-5 w-5" /> {phase === "reading" ? "Mulai sekarang" : "Mulai menjawab"}
+                  </button>
+                </>
+              )}
+              {phase === "running" && (
+                <button disabled={pending} onClick={() => act("pause")} className="flex items-center gap-2 rounded-2xl bg-amber-400 px-6 py-3 font-bold text-slate-900 hover:bg-amber-300 disabled:opacity-50">
+                  <Pause className="h-5 w-5" /> Jeda
+                </button>
+              )}
+              {phase === "paused" && (
+                <button disabled={pending} onClick={() => act("resume")} className="flex items-center gap-2 rounded-2xl bg-emerald-500 px-8 py-3 text-lg font-bold hover:bg-emerald-400 disabled:opacity-50">
+                  <Play className="h-5 w-5" /> Lanjutkan
+                </button>
+              )}
+              {(phase === "running" || phase === "paused") && (
                 <button disabled={pending} onClick={() => act("reveal")} className="flex items-center gap-2 rounded-2xl bg-white/15 px-6 py-3 font-bold hover:bg-white/25 disabled:opacity-50">
                   <Eye className="h-5 w-5" /> Tampilkan jawaban
                 </button>

@@ -163,4 +163,51 @@ describe("live mode", () => {
     await expect(as(u.s1, "insert into public.live_players (session_id, school_id, student_id, score) values ($1, $2, $3, 9999)", [sid, school, u.s1]))
       .rejects.toThrow(/permission denied/);
   });
+
+  it("supports reading time, manual start and pause/resume", async () => {
+    const quiz = await makeQuiz(u.t1, { title: "Live Jeda" });
+    const q1 = await save(u.t1, quiz, { type: "multiple_choice", prompt: "Soal satu", options: [{ label: "Ya", is_correct: true }, { label: "Tidak", is_correct: false }] });
+    await save(u.t1, quiz, { type: "true_false", prompt: "Soal dua", options: [{ label: "Benar", is_correct: true }, { label: "Salah", is_correct: false }] });
+    const sid = await rpc<Id>(u.t1, "live_create", { p_quiz: quiz, p_seconds: 30 });
+    const [{ code }] = await admin<{ code: string }>("select code from public.live_sessions where id = $1", [sid]);
+    await rpc(u.s1, "live_join", { p_code: code });
+    await expect(rpc(u.s1, "live_configure", { p_session: sid, p_mode: "manual", p_read_seconds: 0 })).rejects.toThrow(/bukan pemandu/);
+    await expect(rpc(u.t1, "live_configure", { p_session: sid, p_mode: "x", p_read_seconds: 0 })).rejects.toThrow(/tidak dikenal/);
+
+    // Manual: the question shows but answering waits for the host.
+    await rpc(u.t1, "live_configure", { p_session: sid, p_mode: "manual", p_read_seconds: 0 });
+    await rpc(u.t1, "live_control", { p_session: sid, p_action: "next" });
+    const opts = await options(q1);
+    let st = await rpc<{ session: { status: string; question_started_at: string | null; answer_mode: string } }>(u.s1, "live_state", { p_session: sid });
+    expect(st.session.status).toBe("question");
+    expect(st.session.question_started_at).toBeNull();
+    expect(st.session.answer_mode).toBe("manual");
+    await expect(rpc(u.s1, "live_answer", { p_session: sid, p_selected: [opts[0].id], p_text: null })).rejects.toThrow(/belum dimulai/);
+    await rpc(u.t1, "live_control", { p_session: sid, p_action: "open" });
+
+    // Pause keeps the remaining time and blocks answers; resume restores it.
+    await admin("update public.live_sessions set question_started_at = now() - interval '10 seconds' where id = $1", [sid]);
+    await rpc(u.t1, "live_control", { p_session: sid, p_action: "pause" });
+    const paused = await rpc<{ session: { paused: boolean; remaining_ms: number } }>(u.s1, "live_state", { p_session: sid });
+    expect(paused.session.paused).toBe(true);
+    expect(paused.session.remaining_ms).toBeGreaterThan(19000);
+    expect(paused.session.remaining_ms).toBeLessThanOrEqual(20000);
+    await expect(rpc(u.s1, "live_answer", { p_session: sid, p_selected: [opts[0].id], p_text: null })).rejects.toThrow(/dijeda/);
+    await rpc(u.t1, "live_control", { p_session: sid, p_action: "resume" });
+    const [{ elapsed }] = await admin<{ elapsed: number }>("select extract(epoch from now() - question_started_at)::int as elapsed from public.live_sessions where id = $1", [sid]);
+    expect(elapsed).toBeGreaterThanOrEqual(9);
+    expect(elapsed).toBeLessThanOrEqual(11);
+    await rpc(u.s1, "live_answer", { p_session: sid, p_selected: [opts[0].id], p_text: null });
+
+    // Auto with reading time: answering opens a few seconds later, host can open early.
+    await rpc(u.t1, "live_configure", { p_session: sid, p_mode: "auto", p_read_seconds: 10 });
+    await rpc(u.t1, "live_control", { p_session: sid, p_action: "reveal" });
+    await rpc(u.t1, "live_control", { p_session: sid, p_action: "next" });
+    st = await rpc(u.s1, "live_state", { p_session: sid });
+    expect(Date.parse(st.session.question_started_at!)).toBeGreaterThan(Date.now() + 5000);
+    await expect(rpc(u.s1, "live_answer", { p_session: sid, p_selected: [], p_text: "x" })).rejects.toThrow(/belum dimulai/);
+    await rpc(u.t1, "live_control", { p_session: sid, p_action: "open" });
+    const [{ open }] = await admin<{ open: boolean }>("select question_started_at <= now() as open from public.live_sessions where id = $1", [sid]);
+    expect(open).toBe(true);
+  });
 });

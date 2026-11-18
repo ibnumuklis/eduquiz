@@ -2,6 +2,7 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { createClient } from "@/lib/supabase/client";
 import type { LiveState } from "@/features/live/actions";
+import { optionsSpeech, pause } from "@/lib/tts/plan";
 
 const signed = new Map<string, string>();
 
@@ -96,22 +97,37 @@ export function useLive(sessionId: string, initial: LiveState) {
   return { supabase, state, setState, refresh, ping, connected, error, serverNow };
 }
 
-/** Remaining seconds of the running question, based on the server clock. */
+export type LivePhase = "reading" | "waiting" | "running" | "paused" | null;
+
+/**
+ * Question timing from the server clock:
+ *  - reading: auto mode, answering opens in `readLeft` seconds
+ *  - waiting: manual mode (or paused during reading), host must press "Mulai menjawab"
+ *  - running: answering open, `left` seconds remain
+ *  - paused : host paused, `left` is frozen
+ */
 export function useCountdown(state: LiveState, serverNow: () => number) {
-  const calc = useCallback(() => {
+  const calc = useCallback((): { phase: LivePhase; left: number | null; readLeft: number | null } => {
     const s = state.session;
-    if (s.status !== "question" || !s.question_started_at) return null;
-    const end = Date.parse(s.question_started_at) + s.question_seconds * 1000;
-    return Math.max(0, Math.ceil((end - serverNow()) / 1000));
+    if (s.status !== "question") return { phase: null, left: null, readLeft: null };
+    if (s.paused) return { phase: "paused", left: Math.ceil((s.remaining_ms ?? 0) / 1000), readLeft: null };
+    if (!s.question_started_at) return { phase: "waiting", left: s.question_seconds, readLeft: null };
+    const start = Date.parse(s.question_started_at);
+    const now = serverNow();
+    if (now < start) return { phase: "reading", left: s.question_seconds, readLeft: Math.ceil((start - now) / 1000) };
+    return { phase: "running", left: Math.max(0, Math.ceil((start + s.question_seconds * 1000 - now) / 1000)), readLeft: null };
   }, [state, serverNow]);
-  const [left, setLeft] = useState<number | null>(null);
+  const [t, setT] = useState<{ phase: LivePhase; left: number | null; readLeft: number | null }>({ phase: null, left: null, readLeft: null });
   useEffect(() => {
-    const tick = () => setLeft(calc());
+    const tick = () => setT((prev) => {
+      const n = calc();
+      return prev.phase === n.phase && prev.left === n.left && prev.readLeft === n.readLeft ? prev : n;
+    });
     const first = setTimeout(tick, 0);
-    const t = setInterval(tick, 200);
-    return () => { clearTimeout(first); clearInterval(t); };
+    const iv = setInterval(tick, 200);
+    return () => { clearTimeout(first); clearInterval(iv); };
   }, [calc]);
-  return left;
+  return t;
 }
 
 export const OPTION_STYLES = [
@@ -127,10 +143,8 @@ export const TEXT_TYPES = new Set(["short_answer", "fill_blank", "word_cloud"]);
 
 /** Text read aloud for a Live question: the prompt followed by its answer choices. */
 export function liveSpeechText(q: NonNullable<LiveState["question"]>, withOptions = true) {
-  const opts = withOptions && !TEXT_TYPES.has(q.type) && q.options.length
-    ? ` ${q.options.map((o, i) => `${String.fromCharCode(65 + i)}: ${o.label}`).join(". ")}.`
-    : "";
-  return `${q.prompt}${/[.!?]$/.test(q.prompt.trim()) ? "" : "."}${opts}`;
+  const opts = withOptions && !TEXT_TYPES.has(q.type) && q.options.length ? pause(700) + optionsSpeech(q.options.map((o) => o.label)) : "";
+  return `${q.prompt.trim()}${/[.!?…:]$/.test(q.prompt.trim()) ? "" : "."}${opts}`;
 }
 
 /** Text read after the answer is revealed: the correct answer and explanation. */

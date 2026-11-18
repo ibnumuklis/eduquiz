@@ -130,3 +130,31 @@ html { scrollbar-gutter: stable; }
   outline: 2px solid rgb(99 102 241 / 0.7);
   outline-offset: 2px;
 }
+
+/* ---------- Mobile: never wider than the screen ---------- */
+html, body { overflow-x: clip; max-width: 100%; }
+
+/* ---------- Responsive tables: rows become cards on phones ---------- */
+@media (max-width: 767.98px) {
+  .eq-stack thead { display: none; }
+  .eq-stack table, .eq-stack tbody { display: block; width: 100%; }
+  .eq-stack tr {
+    display: flex; flex-wrap: wrap; align-items: center; column-gap: 1rem; row-gap: .375rem;
+    padding: .875rem 1rem; border-bottom: 1px solid rgb(241 245 249);
+  }
+  .eq-stack td { display: flex; align-items: center; gap: .375rem; padding: 0 !important; min-width: 0; max-width: 100%; }
+  .eq-stack td::before {
+    content: attr(data-label); flex-shrink: 0;
+    font-size: .6875rem; font-weight: 600; letter-spacing: .03em; text-transform: uppercase; color: rgb(148 163 184);
+  }
+  .eq-stack td[data-label=""]::before { display: none; }
+  /* First cell is the card title, full width, no label. */
+  .eq-stack td:first-child { flex-basis: 100%; display: block; }
+  .eq-stack td:first-child::before { display: none; }
+  /* Action buttons (last cell) sit at the end of the card. */
+  .eq-stack td:last-child:not(:first-child) { margin-left: auto; }
+  .eq-stack td:last-child:not(:first-child)::before { display: none; }
+  /* Empty-state rows. */
+  .eq-stack td[colspan] { flex-basis: 100%; justify-content: center; text-align: center; }
+  .eq-stack td[colspan]::before { display: none; }
+}

@@ -17,6 +17,7 @@ import { QUESTION_TYPE_LABEL, SURVEY_TYPES } from "@/lib/validations/quiz";
 import { QuestionInput, isAnswered, type Answer } from "./question-input";
 import { FullscreenGate, IntegrityBadge, IntegrityWarning, Watermark, useIntegrity } from "./integrity";
 import { ReadAloudButton } from "./read-aloud";
+import { optionsSpeech, pause } from "@/lib/tts/plan";
 import { MathText } from "./math-text";
 import { QuestionAudio } from "./audio-player";
 import { SPEECH_LANG } from "@/lib/validations/quiz";
@@ -34,8 +35,9 @@ interface Feedback {
 const backupKey = (id: string) => `eq-attempt-${id}`;
 
 function speakableText(q: AttemptQuestion) {
-  const opts = q.options.map((o, i) => `${q.type === "ordering" || q.type === "tf_grid" ? i + 1 : String.fromCharCode(65 + i)}. ${o.label}`).join(". ");
-  return [q.stimulus?.content, q.prompt, opts].filter(Boolean).join(". ");
+  const opts = q.options.length ? optionsSpeech(q.options.map((o) => o.label), q.type === "ordering" || q.type === "tf_grid") : "";
+  const end = (t: string) => (/[.!?…:]$/.test(t.trim()) ? t.trim() : `${t.trim()}.`);
+  return [q.stimulus?.content ? end(q.stimulus.content) + pause(900) : "", end(q.prompt), opts ? pause(700) + opts : ""].join("");
 }
 
 function KeyReveal({ q, fb }: { q: AttemptQuestion; fb: Feedback }) {

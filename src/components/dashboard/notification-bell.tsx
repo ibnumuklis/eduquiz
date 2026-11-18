@@ -89,14 +89,14 @@ export function NotificationBell({ userId }: { userId: string }) {
         )}
       </button>
       {open && (
-        <div className="absolute right-0 z-50 mt-2 w-[min(22rem,calc(100vw-2rem))] overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-xl animate-fade-in">
+        <div className="fixed inset-x-3 top-[4.25rem] z-50 overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-xl animate-fade-in sm:absolute sm:inset-x-auto sm:right-0 sm:top-auto sm:mt-2 sm:w-[22rem]">
           <div className="flex items-center justify-between border-b border-slate-100 px-4 py-3">
             <p className="text-sm font-semibold text-slate-900">Notifikasi</p>
             <button onClick={markAllRead} className="inline-flex items-center gap-1 text-xs font-medium text-brand-600 hover:underline">
               <CheckCheck className="h-3.5 w-3.5" /> Tandai semua dibaca
             </button>
           </div>
-          <ul className="max-h-96 overflow-y-auto">
+          <ul className="max-h-[min(24rem,calc(100dvh-10rem))] overflow-y-auto overscroll-contain">
             {items.length === 0 && <li className="px-4 py-8 text-center text-sm text-slate-500">Belum ada notifikasi</li>}
             {items.map((n) => {
               const content = (

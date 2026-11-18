@@ -5,7 +5,9 @@ import { actionErrorMessage, authorize } from "@/lib/permissions/action";
 import { fail } from "@/lib/utils/errors";
 import type { ActionResult } from "@/types";
 
-export async function startLive(quizId: string, seconds: number): Promise<ActionResult> {
+export type LiveAnswerMode = "auto" | "manual";
+
+export async function startLive(quizId: string, seconds: number, mode: LiveAnswerMode = "auto", readSeconds = 0): Promise<ActionResult> {
   let id: string;
   try {
     const { supabase } = await authorize("teacher");
@@ -13,6 +15,10 @@ export async function startLive(quizId: string, seconds: number): Promise<Action
     const { data, error } = await supabase.rpc("live_create", { p_quiz: quizId, p_seconds: Math.round(seconds) });
     if (error) return fail(error);
     id = data as string;
+    const { error: cfgError } = await supabase.rpc("live_configure", {
+      p_session: id, p_mode: mode === "manual" ? "manual" : "auto", p_read_seconds: Math.max(0, Math.min(60, Math.round(readSeconds))),
+    });
+    if (cfgError) return fail(cfgError);
   } catch (e) {
     return fail(actionErrorMessage(e));
   }
@@ -36,7 +42,11 @@ export async function joinLive(_: ActionResult | null, formData: FormData): Prom
 
 export type LiveOption = { id: string; label: string; is_correct?: boolean | null; count?: number | null };
 export type LiveState = {
-  session: { id: string; code: string; status: "lobby" | "question" | "reveal" | "ended"; current_index: number; total: number; question_seconds: number; question_started_at: string | null; server_now: string };
+  session: {
+    id: string; code: string; status: "lobby" | "question" | "reveal" | "ended"; current_index: number; total: number;
+    question_seconds: number; question_started_at: string | null; server_now: string;
+    answer_mode?: LiveAnswerMode; read_seconds?: number; paused?: boolean; remaining_ms?: number | null;
+  };
   quiz: { id: string; title: string; language: string | null };
   is_host: boolean;
   players_count: number;

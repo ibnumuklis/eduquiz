@@ -42,7 +42,7 @@ export function DashboardShell({ userId, name, email, role, isSuperAdmin, school
   return (
     <div className="min-h-dvh">
       <Sidebar role={role} isSuperAdmin={isSuperAdmin} open={navOpen} onClose={() => setNavOpen(false)} />
-      <div className="lg:pl-72">
+      <div className="min-w-0 lg:pl-72">
         <header className="sticky top-0 z-20 flex h-16 items-center gap-3 border-b border-slate-200/70 bg-white/80 px-4 backdrop-blur-md sm:px-6">
           <button onClick={() => setNavOpen(true)} className="rounded-xl p-2 text-slate-600 hover:bg-slate-100 lg:hidden" aria-label="Buka menu">
             <Menu className="h-5 w-5" />
@@ -81,7 +81,7 @@ export function DashboardShell({ userId, name, email, role, isSuperAdmin, school
               <ChevronDown className="hidden h-4 w-4 text-slate-400 sm:block" />
             </button>
             {menuOpen && (
-              <div className="absolute right-0 z-50 mt-2 w-64 overflow-hidden rounded-2xl border border-slate-200 bg-white p-1.5 shadow-xl animate-fade-in">
+              <div className="absolute right-0 z-50 mt-2 w-[min(16rem,calc(100vw-1.5rem))] overflow-hidden rounded-2xl border border-slate-200 bg-white p-1.5 shadow-xl animate-fade-in">
                 <div className="px-3 py-2">
                   <p className="truncate text-sm font-semibold text-slate-800">{name}</p>
                   <p className="truncate text-xs text-slate-500">{email}</p>
@@ -101,7 +101,7 @@ export function DashboardShell({ userId, name, email, role, isSuperAdmin, school
             )}
           </div>
         </header>
-        <main className="mx-auto w-full max-w-7xl px-4 py-6 sm:px-6 lg:px-8 lg:py-8">{children}</main>
+        <main className="mx-auto w-full min-w-0 max-w-7xl px-4 py-6 sm:px-6 lg:px-8 lg:py-8">{children}</main>
       </div>
     </div>
   );

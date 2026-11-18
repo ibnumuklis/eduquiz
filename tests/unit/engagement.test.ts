@@ -24,6 +24,7 @@ describe("hasMath", () => {
 });
 
 import { liveRevealText, liveSpeechText } from "@/components/live/use-live";
+import { planSpeech } from "@/lib/tts/plan";
 
 describe("live read-aloud text", () => {
   const q = {
@@ -31,8 +32,12 @@ describe("live read-aloud text", () => {
     options: [{ id: "a", label: "Makassar", is_correct: true }, { id: "b", label: "Gowa", is_correct: false }],
     explanation: "Makassar adalah ibu kota provinsi.",
   };
-  it("reads the prompt then lettered choices", () => {
-    expect(liveSpeechText(q)).toBe("Ibu kota Sulawesi Selatan adalah. A: Makassar. B: Gowa.");
+  it("reads the prompt then each letter, a short pause, and the choice", () => {
+    expect(planSpeech(liveSpeechText(q), "id-ID")).toEqual([
+      { tag: "id-ID", text: "Ibu kota Sulawesi Selatan adalah." }, { tag: "", text: "", pause: 700 },
+      { tag: "id-ID", text: "A" }, { tag: "", text: "", pause: 450 }, { tag: "id-ID", text: "Makassar" }, { tag: "", text: "", pause: 750 },
+      { tag: "id-ID", text: "B" }, { tag: "", text: "", pause: 450 }, { tag: "id-ID", text: "Gowa" },
+    ]);
   });
   it("reads the correct answer and explanation after reveal", () => {
     expect(liveRevealText(q, "id-ID")).toBe("Jawaban yang benar: Makassar. Makassar adalah ibu kota provinsi.");

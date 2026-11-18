@@ -13,7 +13,19 @@ export interface SpeechOptions {
   /** User pronunciation dictionary: "kata" (read with Indonesian voice) or "kata = cara baca". */
   dict?: string;
 }
-export interface SpeechPart { text: string; tag: string }
+export interface SpeechPart { text: string; tag: string; /** Silence in ms (text is empty). */ pause?: number }
+
+/** Inline pause marker understood by planSpeech, e.g. `A${pause(400)}Ibu kota`. */
+export const pause = (ms: number) => `[[jeda:${Math.max(0, Math.round(ms))}]]`;
+const PAUSE_RE = /\[\[jeda:(\d+)\]\]/;
+
+/**
+ * Speech text for answer choices: "A … <jawaban> … B … <jawaban>",
+ * with a short pause after each letter and a longer one between choices.
+ */
+export function optionsSpeech(labels: string[], numbered = false) {
+  return labels.map((label, i) => `${numbered ? i + 1 : String.fromCharCode(65 + i)}${pause(450)}${label}${pause(750)}`).join("");
+}
 
 const EN_STOP = new Set(("the a an is are was were be been of to and or in on at for with what which who whom whose when where why how this that these those it its you your he she they we i my our their his her do does did not can could should would will shall may might must have has had there here from by as if then than so but because about into after before goes go went every " +
   "me him them us am very some any all one two three many much yes no up out off over under good morning afternoon evening night day time name live lives school class teacher student friend house home " +
@@ -188,6 +200,29 @@ function splitEnglish(sentence: string, idWords: Set<string>): SpeechPart[] {
 }
 
 export function planSpeech(text: string, defaultTag = "id-ID", opts: SpeechOptions = {}): SpeechPart[] {
+  if (!PAUSE_RE.test(text)) return planChunk(text, defaultTag, opts);
+  const out: SpeechPart[] = [];
+  const pieces = text.split(new RegExp(PAUSE_RE.source, "g")); // [text, ms, text, ms, …]
+  pieces.forEach((piece, i) => {
+    if (i % 2 === 1) {
+      if (out.length && !out[out.length - 1].pause) out.push({ text: "", tag: "", pause: Number(piece) });
+      return;
+    }
+    const chunk = piece.trim();
+    if (!chunk) return;
+    // A bare choice letter/number ("A", "B", "3") is spoken in the quiz language, not guessed.
+    if (/^([A-Z]|\d{1,2})[.):]?$/.test(chunk)) {
+      const tag = opts.mode === "en" ? "en-US" : opts.mode === "id" ? "id-ID" : defaultTag;
+      out.push({ text: chunk.replace(/[.):]$/, ""), tag });
+      return;
+    }
+    out.push(...planChunk(chunk, defaultTag, opts));
+  });
+  while (out.length && out[out.length - 1].pause) out.pop();
+  return out;
+}
+
+function planChunk(text: string, defaultTag: string, opts: SpeechOptions): SpeechPart[] {
   const mode = opts.mode ?? "auto";
   const { read, idWords } = parseDict(opts.dict);
   const base = applyDict(text.replace(/\$+/g, ""), read).replace(/\b([ap])\.\s?m\.?(?=\s|$|[,;!?])/gi, "$1m");

@@ -68,24 +68,43 @@ export function useReadAloud(defaultTag = "id-ID") {
     return list.find((v) => v.voiceURI === chosen) ?? list[0] ?? null;
   }, [voices]);
 
-  const stop = useCallback(() => { window.speechSynthesis?.cancel(); setSpeaking(false); }, []);
+  // Each speak() gets a token; a newer speak() or stop() invalidates older queues.
+  const run = useRef(0);
+  const timer = useRef<ReturnType<typeof setTimeout> | undefined>(undefined);
+  const stop = useCallback(() => {
+    run.current++;
+    clearTimeout(timer.current);
+    window.speechSynthesis?.cancel();
+    setSpeaking(false);
+  }, []);
+  useEffect(() => () => { run.current++; clearTimeout(timer.current); }, []);
+
   const speak = useCallback((text: string) => {
     if (!("speechSynthesis" in window)) return;
     window.speechSynthesis.cancel();
+    clearTimeout(timer.current);
     const p = prefRef.current;
-    const segs = planSpeech(text, defaultTag, { mode: p.mode, idNames: p.idNames, dict: p.dict });
-    if (!segs.length) return;
-    segs.forEach((seg, i) => {
-      const u = new SpeechSynthesisUtterance(seg.text);
-      const v = pick(seg.tag);
-      u.lang = v?.lang ?? seg.tag;
+    const parts = planSpeech(text, defaultTag, { mode: p.mode, idNames: p.idNames, dict: p.dict });
+    if (!parts.length) return;
+    const token = ++run.current;
+    setSpeaking(true);
+    // Speak parts one after another so pause markers become real silences.
+    const next = (i: number) => {
+      if (run.current !== token) return;
+      if (i >= parts.length) { setSpeaking(false); return; }
+      const part = parts[i];
+      if (part.pause) { timer.current = setTimeout(() => next(i + 1), part.pause); return; }
+      const u = new SpeechSynthesisUtterance(part.text);
+      const v = pick(part.tag);
+      u.lang = v?.lang ?? part.tag;
       if (v) u.voice = v;
       u.rate = prefRef.current.rate;
       u.pitch = 1;
-      if (i === segs.length - 1) { u.onend = () => setSpeaking(false); u.onerror = () => setSpeaking(false); }
+      u.onend = () => next(i + 1);
+      u.onerror = () => next(i + 1);
       window.speechSynthesis.speak(u);
-    });
-    setSpeaking(true);
+    };
+    next(0);
   }, [defaultTag, pick]);
 
   const update = useCallback((p: Pref) => { prefRef.current = p; setPref(p); savePref(p); }, []);

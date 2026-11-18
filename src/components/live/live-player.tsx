@@ -1,7 +1,7 @@
 "use client";
 import { useEffect, useRef, useState } from "react";
 import Link from "next/link";
-import { Check, Loader2, Send, X } from "lucide-react";
+import { BookOpen, Check, Loader2, Pause, Send, X } from "lucide-react";
 import { toast } from "sonner";
 import type { LiveState } from "@/features/live/actions";
 import { dbErrorMessage } from "@/lib/utils/errors";
@@ -15,7 +15,8 @@ import { Leaderboard, LiveShell, Podium, TimerRing } from "./live-shared";
 
 export function LivePlayer({ initial }: { initial: LiveState }) {
   const { supabase, state, refresh, ping, serverNow } = useLive(initial.session.id, initial);
-  const left = useCountdown(state, serverNow);
+  const { phase, left, readLeft } = useCountdown(state, serverNow);
+  const locked = phase !== "running";
   const [pending, setPending] = useState(false);
   const [picked, setPicked] = useState<string[]>([]);
   const [text, setText] = useState("");
@@ -35,7 +36,7 @@ export function LivePlayer({ initial }: { initial: LiveState }) {
   }, [s.current_index]);
 
   const answered = !!me?.answered || sentFor === s.current_index;
-  const timeUp = left === 0;
+  const timeUp = phase === "running" && left === 0;
 
   const submit = async (sel: string[], txt: string | null) => {
     if (pending) return;
@@ -97,15 +98,25 @@ export function LivePlayer({ initial }: { initial: LiveState }) {
                     <img src={q.image_url} alt="" className="mx-auto mt-3 max-h-48 rounded-xl object-contain" />
                   )}
                 </div>
-                {left !== null && <TimerRing left={left} total={s.question_seconds} size={64} />}
+                {phase === "running" && left !== null && <TimerRing left={left} total={s.question_seconds} size={64} />}
+                {phase === "reading" && readLeft !== null && <TimerRing left={readLeft} total={Math.max(1, s.read_seconds ?? 1)} size={64} />}
               </div>
 
+              {locked && (
+                <div className={cn("flex items-center justify-center gap-2 rounded-2xl px-4 py-3 text-center text-sm font-semibold",
+                  phase === "paused" ? "bg-amber-400 text-slate-900" : "bg-white/15 text-white")}>
+                  {phase === "paused" ? <><Pause className="h-4 w-4" /> Dijeda oleh guru — tunggu sebentar</>
+                    : phase === "reading" ? <><BookOpen className="h-4 w-4" /> Baca soalnya dulu… menjawab dibuka {readLeft} detik lagi</>
+                    : <><BookOpen className="h-4 w-4" /> Dengarkan soal. Guru akan membuka waktu menjawab.</>}
+                </div>
+              )}
+
               {TEXT_TYPES.has(q.type) ? (
-                <form className="mt-auto space-y-3" onSubmit={(e) => { e.preventDefault(); if (text.trim()) submit([], text.trim()); }}>
-                  <input value={text} onChange={(e) => setText(e.target.value)} maxLength={q.type === "word_cloud" ? 40 : 200} autoFocus
+                <form className={cn("mt-auto space-y-3", locked && "pointer-events-none opacity-50")} onSubmit={(e) => { e.preventDefault(); if (text.trim()) submit([], text.trim()); }}>
+                  <input value={text} onChange={(e) => setText(e.target.value)} maxLength={q.type === "word_cloud" ? 40 : 200} disabled={locked}
                     placeholder={q.type === "word_cloud" ? "Ketik satu kata…" : "Ketik jawabanmu…"}
                     className="h-14 w-full rounded-2xl border-0 bg-white px-4 text-lg font-semibold text-slate-900 outline-none ring-4 ring-transparent focus:ring-amber-400" />
-                  <button disabled={pending || !text.trim()} className="flex h-14 w-full items-center justify-center gap-2 rounded-2xl bg-emerald-500 text-lg font-bold disabled:opacity-50">
+                  <button disabled={pending || locked || !text.trim()} className="flex h-14 w-full items-center justify-center gap-2 rounded-2xl bg-emerald-500 text-lg font-bold disabled:opacity-50">
                     {pending ? <Loader2 className="h-5 w-5 animate-spin" /> : <Send className="h-5 w-5" />} Kirim
                   </button>
                 </form>
@@ -116,9 +127,9 @@ export function LivePlayer({ initial }: { initial: LiveState }) {
                       const st = OPTION_STYLES[i % OPTION_STYLES.length];
                       const on = picked.includes(o.id);
                       return (
-                        <button key={o.id} disabled={pending}
+                        <button key={o.id} disabled={pending || locked}
                           onClick={() => q.type === "multiple_select" ? setPicked((p) => on ? p.filter((x) => x !== o.id) : [...p, o.id]) : submit([o.id], null)}
-                          className={cn("flex min-h-20 items-center gap-3 rounded-2xl p-4 text-left text-lg font-bold shadow-lg transition active:scale-95", st.bg, st.hover,
+                          className={cn("flex min-h-20 items-center gap-3 rounded-2xl p-4 text-left text-lg font-bold shadow-lg transition active:scale-95 disabled:opacity-50 disabled:active:scale-100", st.bg, !locked && st.hover,
                             on && "ring-4 ring-white")}>
                           <span className="text-2xl">{st.shape}</span><MathText text={o.label} className="flex-1" />
                           {on && <Check className="h-6 w-6" />}
@@ -127,7 +138,7 @@ export function LivePlayer({ initial }: { initial: LiveState }) {
                     })}
                   </div>
                   {q.type === "multiple_select" && (
-                    <button disabled={pending || !picked.length} onClick={() => submit(picked, null)}
+                    <button disabled={pending || locked || !picked.length} onClick={() => submit(picked, null)}
                       className="flex h-14 items-center justify-center gap-2 rounded-2xl bg-white text-lg font-bold text-indigo-900 disabled:opacity-50">
                       <Send className="h-5 w-5" /> Kirim {picked.length} pilihan
                     </button>
