@@ -16,13 +16,13 @@ interface NavItem { href: string; label: string; icon: ComponentType<LucideProps
 interface NavSection { title?: string; items: NavItem[] }
 
 const teacherTools: NavItem[] = [
-  { href: "/teacher/quizzes", label: "Kuis Saya", icon: ClipboardList, hint: "Buat, atur, publikasikan, dan pantau kuis. Termasuk mode Live, impor Excel, dan cetak PDF." },
-  { href: "/teacher/bank", label: "Bank Soal", icon: Library, hint: "Kumpulan soal Anda dan soal yang dibagikan guru lain di sekolah. Salin ke kuis mana pun." },
-  { href: "/teacher/grading", label: "Koreksi Jawaban", icon: ClipboardCheck, hint: "Nilai jawaban uraian & isian yang perlu dikoreksi manual, dengan rubrik dan umpan balik." },
-  { href: "/teacher/classes", label: "Kelas Saya", icon: GraduationCap, hint: "Daftar kelas dan siswa yang Anda ajar." },
-  { href: "/teacher/reports", label: "Rapor TP", icon: FileBarChart2, hint: "Rekap ketuntasan per Tujuan Pembelajaran lintas kuis dalam satu semester + draf deskripsi rapor (PDF/Excel)." },
-  { href: "/teacher/objectives", label: "TP / CP", icon: Target, hint: "Daftar Tujuan Pembelajaran Kurikulum Merdeka. Tautkan ke soal untuk laporan ketuntasan." },
-  { href: "/teacher/accommodations", label: "Akomodasi Siswa", icon: Accessibility, hint: "Waktu tambahan, kurangi opsi, dan bacakan soal untuk siswa yang membutuhkan." },
+  { href: "/teacher/quizzes", label: "Kuis Saya", icon: ClipboardList, hint: "Buat, publikasikan & pantau kuis" },
+  { href: "/teacher/bank", label: "Bank Soal", icon: Library, hint: "Soal Anda & soal bersama sekolah" },
+  { href: "/teacher/grading", label: "Koreksi Jawaban", icon: ClipboardCheck, hint: "Nilai jawaban uraian secara manual" },
+  { href: "/teacher/classes", label: "Kelas Saya", icon: GraduationCap, hint: "Kelas & siswa yang Anda ajar" },
+  { href: "/teacher/reports", label: "Rapor TP", icon: FileBarChart2, hint: "Ketuntasan TP per semester + draf rapor" },
+  { href: "/teacher/objectives", label: "TP / CP", icon: Target, hint: "Tujuan Pembelajaran Kurikulum Merdeka" },
+  { href: "/teacher/accommodations", label: "Akomodasi Siswa", icon: Accessibility, hint: "Waktu tambahan & bantuan untuk siswa" },
 ];
 
 function sectionsFor(role: AppRole | null, isSuperAdmin: boolean): NavSection[] {
@@ -30,14 +30,14 @@ function sectionsFor(role: AppRole | null, isSuperAdmin: boolean): NavSection[] 
   if (role === "school_admin") {
     sections.push({
       items: [
-        { href: "/school", label: "Dasbor Sekolah", icon: LayoutDashboard, exact: true, hint: "Ringkasan statistik sekolah: siswa, guru, kuis, dan aktivitas." },
-        { href: "/school/teachers", label: "Guru & Staf", icon: UserSquare2, hint: "Kelola guru, peran, status, dan penugasan mengajar." },
-        { href: "/school/students", label: "Siswa", icon: Users, hint: "Daftar siswa sekolah, NIS, dan kelasnya." },
-        { href: "/school/classes", label: "Kelas", icon: GraduationCap, hint: "Buat kelas dan atur anggotanya." },
-        { href: "/school/subjects", label: "Mata Pelajaran", icon: BookOpen, hint: "Daftar mata pelajaran sekolah." },
-        { href: "/school/invitations", label: "Undangan", icon: Mail, hint: "Undang guru & siswa lewat kode atau impor CSV." },
-        { href: "/school/activity", label: "Aktivitas", icon: ScrollText, hint: "Jejak audit: siapa melakukan apa dan kapan." },
-        { href: "/school/settings", label: "Pengaturan Sekolah", icon: Settings, hint: "Profil sekolah, tahun ajaran, dan privasi leaderboard." },
+        { href: "/school", label: "Dasbor Sekolah", icon: LayoutDashboard, exact: true, hint: "Ringkasan statistik sekolah" },
+        { href: "/school/teachers", label: "Guru & Staf", icon: UserSquare2, hint: "Kelola guru & penugasan mengajar" },
+        { href: "/school/students", label: "Siswa", icon: Users, hint: "Data siswa sekolah" },
+        { href: "/school/classes", label: "Kelas", icon: GraduationCap, hint: "Buat kelas & atur anggota" },
+        { href: "/school/subjects", label: "Mata Pelajaran", icon: BookOpen, hint: "Mata pelajaran sekolah" },
+        { href: "/school/invitations", label: "Undangan", icon: Mail, hint: "Undang guru & siswa" },
+        { href: "/school/activity", label: "Aktivitas", icon: ScrollText, hint: "Riwayat aktivitas pengguna" },
+        { href: "/school/settings", label: "Pengaturan Sekolah", icon: Settings, hint: "Profil & tahun ajaran sekolah" },
       ],
     });
     sections.push({ title: "Mengajar", items: [{ href: "/teacher", label: "Dasbor Guru", icon: BarChart3, exact: true }, ...teacherTools] });
@@ -46,13 +46,13 @@ function sectionsFor(role: AppRole | null, isSuperAdmin: boolean): NavSection[] 
   } else if (role === "student") {
     sections.push({
       items: [
-        { href: "/student", label: "Dasbor", icon: LayoutDashboard, exact: true, hint: "Ringkasan XP, level, streak, dan kuis terbaru." },
-        { href: "/student/quizzes", label: "Kuis", icon: ClipboardList, hint: "Kuis yang ditugaskan kepadamu." },
-        { href: "/student/live", label: "Gabung Live", icon: Radio, hint: "Ikuti kuis Live bersama kelas dengan kode 6 angka dari guru." },
-        { href: "/student/join", label: "Gabung dengan Kode", icon: KeyRound, hint: "Masuk ke kuis memakai kode akses dari guru." },
-        { href: "/student/history", label: "Riwayat Nilai", icon: History, hint: "Semua nilai dan pembahasan kuis yang sudah kamu kerjakan." },
-        { href: "/student/achievements", label: "Pencapaian", icon: Award, hint: "Badge yang sudah dan belum kamu raih." },
-        { href: "/student/leaderboard", label: "Leaderboard", icon: Trophy, hint: "Peringkat XP di sekolah atau kelasmu." },
+        { href: "/student", label: "Dasbor", icon: LayoutDashboard, exact: true, hint: "XP, level & kuis terbaru" },
+        { href: "/student/quizzes", label: "Kuis", icon: ClipboardList, hint: "Kuis yang ditugaskan kepadamu" },
+        { href: "/student/live", label: "Gabung Live", icon: Radio, hint: "Masukkan kode Live dari guru" },
+        { href: "/student/join", label: "Gabung dengan Kode", icon: KeyRound, hint: "Masuk kuis dengan kode akses" },
+        { href: "/student/history", label: "Riwayat Nilai", icon: History, hint: "Nilai & pembahasan kuismu" },
+        { href: "/student/achievements", label: "Pencapaian", icon: Award, hint: "Badge yang kamu kumpulkan" },
+        { href: "/student/leaderboard", label: "Leaderboard", icon: Trophy, hint: "Peringkat XP sekolah & kelas" },
       ],
     });
   }

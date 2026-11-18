@@ -1,31 +1,37 @@
 "use client";
-import { useEffect, useRef, useState, useTransition } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import Link from "next/link";
 import { ArrowLeft, Check, ChevronRight, Copy, Eye, Maximize, Minimize, Square, Users, Wifi, WifiOff } from "lucide-react";
 import { toast } from "sonner";
-import { liveControl, type LiveState } from "@/features/live/actions";
+import type { LiveState } from "@/features/live/actions";
+import { dbErrorMessage } from "@/lib/utils/errors";
 import { MathText } from "@/components/quiz/math-text";
 import { Tip } from "@/components/ui/tooltip";
 import { cn } from "@/lib/utils";
-import { useCountdown, useLiveState, OPTION_STYLES, TEXT_TYPES } from "./use-live";
+import { useCountdown, useLive, OPTION_STYLES, TEXT_TYPES } from "./use-live";
 import { Leaderboard, LiveShell, Podium, TimerRing } from "./live-shared";
 
 export function LiveHost({ initial }: { initial: LiveState }) {
-  const { state, refresh, connected, serverNow } = useLiveState(initial.session.id, initial);
+  const { supabase, state, setState, refresh, ping, connected, serverNow } = useLive(initial.session.id, initial);
   const left = useCountdown(state, serverNow);
-  const [pending, start] = useTransition();
+  const [pending, setPending] = useState(false);
   const [full, setFull] = useState(false);
   const autoRevealed = useRef<string | null>(null);
   const s = state.session;
   const q = state.question;
   const answered = q?.answered ?? 0;
 
-  const act = (action: "next" | "reveal" | "end") =>
-    start(async () => {
-      const r = await liveControl(s.id, action);
-      if (!r.ok) toast.error(r.error);
-      await refresh();
-    });
+  const act = useCallback(async (action: "next" | "reveal" | "end") => {
+    setPending(true);
+    // Instant feedback on the projector while the server confirms.
+    if (action === "reveal") setState((st) => ({ ...st, session: { ...st.session, status: "reveal" } }));
+    if (action === "end") setState((st) => ({ ...st, session: { ...st.session, status: "ended" } }));
+    const { error } = await supabase.rpc("live_control", { p_session: s.id, p_action: action });
+    if (error) toast.error(dbErrorMessage(error));
+    ping();          // players refresh immediately
+    await refresh(); // and so do we
+    setPending(false);
+  }, [supabase, s.id, setState, ping, refresh]);
 
   // Tampilkan jawaban otomatis saat waktu habis atau semua peserta sudah menjawab.
   useEffect(() => {
@@ -34,10 +40,9 @@ export function LiveHost({ initial }: { initial: LiveState }) {
     if (autoRevealed.current === key) return;
     if (left === 0 || (state.players_count > 0 && answered >= state.players_count)) {
       autoRevealed.current = key;
-      act("reveal");
+      setTimeout(() => act("reveal"), 300); // short beat so the last answer lands on screen
     }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [left, answered, s.status, s.current_index]);
+  }, [left, answered, s.status, s.current_index, q, state.players_count, act]);
 
   useEffect(() => {
     const on = () => setFull(!!document.fullscreenElement);

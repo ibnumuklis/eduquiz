@@ -2,11 +2,13 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { Settings2, Square, Volume2 } from "lucide-react";
 import { cn } from "@/lib/utils";
+import { planSpeech, type SpeechMode } from "@/lib/tts/plan";
 
 const PREF_KEY = "eq-tts-pref";
-interface Pref { rate: number; voices: Record<string, string> }
+interface Pref { rate: number; voices: Record<string, string>; mode: SpeechMode; idNames: boolean; dict: string }
+const DEFAULT_PREF: Pref = { rate: 1, voices: {}, mode: "auto", idNames: true, dict: "" };
 function loadPref(): Pref {
-  try { return { rate: 1, voices: {}, ...JSON.parse(localStorage.getItem(PREF_KEY) ?? "{}") }; } catch { return { rate: 1, voices: {} }; }
+  try { return { ...DEFAULT_PREF, ...JSON.parse(localStorage.getItem(PREF_KEY) ?? "{}") }; } catch { return DEFAULT_PREF; }
 }
 function savePref(p: Pref) { try { localStorage.setItem(PREF_KEY, JSON.stringify(p)); } catch { /* ignore */ } }
 
@@ -38,19 +40,9 @@ export function voicesFor(voices: SpeechSynthesisVoice[], tag: string) {
   return voices.filter((v) => v.lang.toLowerCase().replace("_", "-").startsWith(base)).sort((a, b) => voiceScore(b, tag) - voiceScore(a, tag));
 }
 
-const EN = new Set("the a an is are was were be been of to and or in on at for with what which who whom whose when where why how this that these those it its you your he she they we i my our their his her do does did not can could should would will shall may might must have has had there here from by as if then than so but because about into after before".split(" "));
-const ID = new Set("yang dan di ke dari ini itu adalah untuk dengan tidak akan pada dalam apa siapa bagaimana mengapa kapan dimana manakah berikut sebagai atau juga karena oleh telah sudah belum bisa dapat harus kami kita mereka saya kamu anda nya lebih paling sangat".split(" "));
-
-/** Splits text into sentences and tags each one as English or the quiz language (simple stop-word vote). */
+/** Sentence-level language split (kept for compatibility; see planSpeech for the full planner). */
 export function segmentByLanguage(text: string, defaultTag: string) {
-  const parts = text.replace(/\s+/g, " ").match(/[^.!?\n]+[.!?]*|\n/g) ?? [text];
-  return parts.map((p) => p.trim()).filter(Boolean).map((p) => {
-    if (!defaultTag.startsWith("id")) return { text: p, tag: defaultTag };
-    const words = p.toLowerCase().match(/[a-z']+/g) ?? [];
-    const en = words.filter((w) => EN.has(w)).length;
-    const id = words.filter((w) => ID.has(w)).length;
-    return { text: p, tag: en >= 2 && en > id ? "en-US" : defaultTag };
-  });
+  return planSpeech(text, defaultTag, { idNames: false });
 }
 
 /** Reads text aloud with the device's best voice for each language (free, built into the browser). */
@@ -58,7 +50,7 @@ export function useReadAloud(defaultTag = "id-ID") {
   const voices = useVoices();
   const [speaking, setSpeaking] = useState(false);
   const [supported, setSupported] = useState(false);
-  const [pref, setPref] = useState<Pref>({ rate: 1, voices: {} });
+  const [pref, setPref] = useState<Pref>(DEFAULT_PREF);
   const prefRef = useRef(pref);
   useEffect(() => {
     // eslint-disable-next-line react-hooks/set-state-in-effect
@@ -80,8 +72,9 @@ export function useReadAloud(defaultTag = "id-ID") {
   const speak = useCallback((text: string) => {
     if (!("speechSynthesis" in window)) return;
     window.speechSynthesis.cancel();
-    const clean = text.replace(/_{2,}/g, defaultTag.startsWith("en") ? " blank " : " titik-titik ").replace(/\$+/g, "");
-    const segs = segmentByLanguage(clean, defaultTag);
+    const p = prefRef.current;
+    const segs = planSpeech(text, defaultTag, { mode: p.mode, idNames: p.idNames, dict: p.dict });
+    if (!segs.length) return;
     segs.forEach((seg, i) => {
       const u = new SpeechSynthesisUtterance(seg.text);
       const v = pick(seg.tag);
@@ -100,10 +93,18 @@ export function useReadAloud(defaultTag = "id-ID") {
 }
 
 const RATES = [0.75, 0.9, 1, 1.15, 1.3];
+const MODES: { value: SpeechMode; label: string; hint: string }[] = [
+  { value: "auto", label: "Otomatis", hint: "Kalimat Inggris dibaca suara Inggris, sisanya suara Indonesia" },
+  { value: "id", label: "Indonesia", hint: "Semua teks dibaca dengan suara bahasa Indonesia" },
+  { value: "en", label: "Inggris", hint: "Semua teks dibaca dengan suara bahasa Inggris" },
+];
+const SAMPLE = "Budi goes to SMA Negeri 1 Makassar at 07.30 every day. Upacara dimulai pukul 07.00 WITA.";
 
 export function ReadAloudButton({ text, prominent = false, autoKey, lang = "id-ID" }: { text: string; prominent?: boolean; autoKey?: string; lang?: string }) {
   const { speak, stop, speaking, supported, voices, pref, update, pick } = useReadAloud(lang);
   const [open, setOpen] = useState(false);
+  const [sample, setSample] = useState(SAMPLE);
+  const [showDict, setShowDict] = useState(false);
   const menuRef = useRef<HTMLDivElement>(null);
   useEffect(() => {
     if (prominent && autoKey && supported && voices.length) speak(text);
@@ -118,6 +119,7 @@ export function ReadAloudButton({ text, prominent = false, autoKey, lang = "id-I
   const langs = useMemo(() => {
     const tags = [lang];
     if (!lang.startsWith("en")) tags.push("en-US");
+    if (!lang.startsWith("id")) tags.push("id-ID");
     return tags;
   }, [lang]);
   if (!supported) return null;
@@ -133,8 +135,24 @@ export function ReadAloudButton({ text, prominent = false, autoKey, lang = "id-I
         <Settings2 className="h-3.5 w-3.5" />
       </button>
       {open && (
-        <div className="absolute right-0 top-full z-30 mt-2 w-72 rounded-2xl border border-slate-200 bg-white p-4 text-left shadow-xl">
-          <p className="text-xs font-bold uppercase tracking-wide text-slate-500">Kecepatan</p>
+        <div className="absolute right-0 top-full z-30 mt-2 max-h-[70vh] w-80 overflow-y-auto rounded-2xl border border-slate-200 bg-white p-4 text-left shadow-xl">
+          <p className="text-xs font-bold uppercase tracking-wide text-slate-500">Bahasa pembacaan</p>
+          <div className="mt-2 grid grid-cols-3 gap-1 rounded-xl bg-slate-100 p-1">
+            {MODES.map((m) => (
+              <button key={m.value} type="button" title={m.hint} onClick={() => update({ ...pref, mode: m.value })}
+                className={cn("rounded-lg py-1.5 text-xs font-semibold transition", pref.mode === m.value ? "bg-white text-brand-700 shadow-sm" : "text-slate-500 hover:text-slate-700")}>
+                {m.label}
+              </button>
+            ))}
+          </div>
+          <p className="mt-1 text-[11px] italic text-slate-400">{MODES.find((m) => m.value === pref.mode)?.hint}</p>
+          {pref.mode !== "id" && (
+            <label className="mt-3 flex cursor-pointer items-start gap-2 text-xs text-slate-600">
+              <input type="checkbox" className="mt-0.5 accent-brand-600" checked={pref.idNames} onChange={(e) => update({ ...pref, idNames: e.target.checked })} />
+              <span>Nama orang, sekolah &amp; tempat Indonesia dibaca dengan suara Indonesia <span className="text-slate-400">(mis. Budi, SMA Negeri 1 Makassar)</span></span>
+            </label>
+          )}
+          <p className="mt-4 text-xs font-bold uppercase tracking-wide text-slate-500">Kecepatan</p>
           <div className="mt-2 flex gap-1">
             {RATES.map((r) => (
               <button key={r} type="button" onClick={() => update({ ...pref, rate: r })}
@@ -156,8 +174,24 @@ export function ReadAloudButton({ text, prominent = false, autoKey, lang = "id-I
               </div>
             );
           })}
-          <p className="mt-3 text-[11px] leading-snug text-slate-500">★ = suara alami. Suara terbaik tersedia gratis di Microsoft Edge (“Natural”), Chrome (“Google”), dan iPhone (Siri). Kalimat bahasa Inggris dalam soal dibacakan otomatis dengan aksen Inggris.</p>
-          <button type="button" onClick={() => speak("Halo, ini contoh suara. Hello, this is how English sounds.")} className="mt-2 text-xs font-semibold text-brand-700 hover:underline">Coba suara</button>
+          <button type="button" onClick={() => setShowDict((v) => !v)} className="mt-4 text-xs font-semibold text-slate-600 hover:text-brand-700">
+            {showDict ? "▾" : "▸"} Kamus lafal {pref.dict.trim() ? `(${pref.dict.split(/\n/).filter((l) => l.trim()).length})` : "(opsional)"}
+          </button>
+          {showDict && (
+            <div className="mt-1">
+              <textarea rows={4} value={pref.dict} onChange={(e) => update({ ...pref, dict: e.target.value })} spellCheck={false}
+                placeholder={"Satu kata per baris, contoh:\nTompo\nDaeng = deng\nGowa = go-wa"}
+                className="w-full rounded-lg border border-slate-200 px-2 py-1.5 font-mono text-xs" />
+              <p className="text-[11px] italic leading-snug text-slate-400">Kata saja → dibaca suara Indonesia. “kata = bacaan” → diganti cara bacanya.</p>
+            </div>
+          )}
+          <p className="mt-4 text-xs font-bold uppercase tracking-wide text-slate-500">Coba kalimat</p>
+          <textarea rows={2} value={sample} onChange={(e) => setSample(e.target.value)} className="mt-1 w-full rounded-lg border border-slate-200 px-2 py-1.5 text-xs" />
+          <div className="mt-1 flex items-center justify-between">
+            <button type="button" onClick={() => speak(sample)} className="inline-flex items-center gap-1 text-xs font-semibold text-brand-700 hover:underline"><Volume2 className="h-3.5 w-3.5" /> Coba suara</button>
+            <button type="button" onClick={() => { update(DEFAULT_PREF); setSample(SAMPLE); }} className="text-[11px] text-slate-400 hover:text-slate-600">Atur ulang</button>
+          </div>
+          <p className="mt-3 text-[11px] italic leading-snug text-slate-400">★ = suara alami. Suara terbaik gratis di Microsoft Edge (“Natural”), Chrome (“Google”), dan iPhone (Siri). Pengaturan disimpan di perangkat ini.</p>
         </div>
       )}
     </div>

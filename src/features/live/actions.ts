@@ -74,28 +74,3 @@ export async function fetchLiveState(sessionId: string): Promise<ActionResult<Li
     return fail(actionErrorMessage(e));
   }
 }
-
-export async function liveControl(sessionId: string, action: "next" | "reveal" | "end"): Promise<ActionResult> {
-  try {
-    if (!z.string().uuid().safeParse(sessionId).success) return fail("Sesi tidak valid");
-    const supabase = await client();
-    const { error } = await supabase.rpc("live_control", { p_session: sessionId, p_action: action });
-    if (error) return fail(error);
-    return { ok: true };
-  } catch (e) {
-    return fail(actionErrorMessage(e));
-  }
-}
-
-export async function liveAnswer(sessionId: string, selected: string[], text: string | null): Promise<ActionResult> {
-  try {
-    if (!z.string().uuid().safeParse(sessionId).success) return fail("Sesi tidak valid");
-    const ids = selected.filter((s) => z.string().uuid().safeParse(s).success).slice(0, 20);
-    const supabase = await client();
-    const { error } = await supabase.rpc("live_answer", { p_session: sessionId, p_selected: ids, p_text: text ? text.slice(0, 200) : null });
-    if (error) return fail(error);
-    return { ok: true };
-  } catch (e) {
-    return fail(actionErrorMessage(e));
-  }
-}

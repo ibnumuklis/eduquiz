@@ -13,7 +13,7 @@ export function LiveStartButton({ quizId }: { quizId: string }) {
   const [pending, start] = useTransition();
   return (
     <>
-      <Button variant="accent" onClick={() => setOpen(true)} tooltip="Kuis bersama di kelas: soal tampil di proyektor, siswa menjawab dari HP, skor dari ketepatan & kecepatan.">
+      <Button variant="accent" onClick={() => setOpen(true)} tooltip="Kuis bersama di layar kelas">
         <Radio className="h-4 w-4" /> Mulai Live
       </Button>
       <Dialog open={open} onClose={() => setOpen(false)} title="Mulai kuis Live"

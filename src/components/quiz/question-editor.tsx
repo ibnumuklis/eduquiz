@@ -286,7 +286,7 @@ export function QuestionEditor({
           </div>
         ) : (
           <Button type="button" variant="outline" size="sm" loading={uploading} onClick={() => audioRef.current?.click()}
-            tooltip="Unggah rekaman suara (mp3/m4a/wav, maks. 10 MB) untuk soal listening. Rekaman asli guru terdengar paling natural.">
+            tooltip="Unggah audio listening (maks. 10 MB)">
             <Headphones className="h-4 w-4" /> Tambah audio (listening)
           </Button>
         )}

@@ -9,7 +9,7 @@ type Side = "top" | "bottom" | "right" | "left";
  * Accessible hover/focus tooltip rendered in a portal (never clipped by scroll containers).
  * Wrap any element: <Tip content="Keterangan">…</Tip>. Uses `display: contents`, so layout is unchanged.
  */
-export function Tip({ content, side = "top", children, delay = 350, className }: {
+export function Tip({ content, side = "top", children, delay = 450, className }: {
   content: ReactNode; side?: Side; children: ReactNode; delay?: number; className?: string;
 }) {
   const id = useId();
@@ -25,10 +25,10 @@ export function Tip({ content, side = "top", children, delay = 350, className }:
       const r = el.getBoundingClientRect();
       if (!r.width && !r.height) return;
       let s = side;
-      if (s === "right" && r.right + 260 > window.innerWidth) s = "bottom";
-      if (s === "top" && r.top < 60) s = "bottom";
-      const x = s === "right" ? r.right + 10 : s === "left" ? r.left - 10 : r.left + r.width / 2;
-      const y = s === "top" ? r.top - 8 : s === "bottom" ? r.bottom + 8 : r.top + r.height / 2;
+      if (s === "right" && r.right + 220 > window.innerWidth) s = "bottom";
+      if (s === "top" && r.top < 40) s = "bottom";
+      const x = s === "right" ? r.right + 6 : s === "left" ? r.left - 6 : r.left + r.width / 2;
+      const y = s === "top" ? r.top - 5 : s === "bottom" ? r.bottom + 5 : r.top + r.height / 2;
       setPos({ x, y, side: s });
     }, delay);
   }, [side, delay]);
@@ -53,7 +53,7 @@ export function Tip({ content, side = "top", children, delay = 350, className }:
       {children}
       {pos && typeof document !== "undefined" && createPortal(
         <span id={id} role="tooltip" style={{ left: pos.x, top: pos.y, transform }}
-          className={cn("pointer-events-none fixed z-[100] max-w-64 animate-fade-in rounded-xl bg-slate-900/95 px-3 py-2 text-xs font-medium leading-snug text-white shadow-xl shadow-slate-900/20 backdrop-blur", className)}>
+          className={cn("pointer-events-none fixed z-[100] max-w-52 animate-fade-in rounded-md bg-slate-800/70 px-2 py-1 text-[11px] font-normal italic leading-snug text-white/95 shadow-sm backdrop-blur-sm", className)}>
           {content}
         </span>,
         document.body,

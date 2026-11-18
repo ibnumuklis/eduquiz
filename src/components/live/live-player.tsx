@@ -1,18 +1,19 @@
 "use client";
-import { useEffect, useRef, useState, useTransition } from "react";
+import { useEffect, useRef, useState } from "react";
 import Link from "next/link";
 import { Check, Loader2, Send, X } from "lucide-react";
 import { toast } from "sonner";
-import { liveAnswer, type LiveState } from "@/features/live/actions";
+import type { LiveState } from "@/features/live/actions";
+import { dbErrorMessage } from "@/lib/utils/errors";
 import { MathText } from "@/components/quiz/math-text";
 import { cn } from "@/lib/utils";
-import { useCountdown, useLiveState, OPTION_STYLES, TEXT_TYPES } from "./use-live";
+import { useCountdown, useLive, OPTION_STYLES, TEXT_TYPES } from "./use-live";
 import { Leaderboard, LiveShell, Podium, TimerRing } from "./live-shared";
 
 export function LivePlayer({ initial }: { initial: LiveState }) {
-  const { state, refresh, serverNow } = useLiveState(initial.session.id, initial);
+  const { supabase, state, refresh, ping, serverNow } = useLive(initial.session.id, initial);
   const left = useCountdown(state, serverNow);
-  const [pending, start] = useTransition();
+  const [pending, setPending] = useState(false);
   const [picked, setPicked] = useState<string[]>([]);
   const [text, setText] = useState("");
   const [sentFor, setSentFor] = useState<number | null>(null);
@@ -32,13 +33,23 @@ export function LivePlayer({ initial }: { initial: LiveState }) {
   const answered = !!me?.answered || sentFor === s.current_index;
   const timeUp = left === 0;
 
-  const submit = (sel: string[], txt: string | null) =>
-    start(async () => {
-      const r = await liveAnswer(s.id, sel, txt);
-      if (!r.ok) { toast.error(r.error); return; }
-      setSentFor(s.current_index);
+  const submit = async (sel: string[], txt: string | null) => {
+    if (pending) return;
+    const index = s.current_index;
+    setPending(true);
+    setSentFor(index); // show "Jawaban terkirim" immediately
+    navigator.vibrate?.(30);
+    const { error } = await supabase.rpc("live_answer", { p_session: s.id, p_selected: sel, p_text: txt });
+    setPending(false);
+    if (error && !/sudah menjawab/i.test(error.message)) {
+      setSentFor(null);
+      toast.error(dbErrorMessage(error));
       refresh();
-    });
+      return;
+    }
+    ping(); // host's answer counter updates instantly
+    refresh();
+  };
 
   return (
     <LiveShell className="flex flex-col">
